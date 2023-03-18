@@ -1,0 +1,9 @@
+*.txt
+*.svg
+.DS_Store
+sudoku
+.vscode/
+CMakeFiles/
+Makefile
+build/
+cmake_install.cmake

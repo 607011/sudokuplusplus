@@ -26,10 +26,10 @@ public:
     explicit sudoku(std::string const &board_str)
         : sudoku()
     {
-        assert(board.length() == 81);
-        for (int i = 0; i < 81; ++i)
+        assert(board.size() == 81);
+        for (size_t i = 0; i < 81U; ++i)
         {
-            board[i] = board_str.at(i) - '0';
+            board[i] = board_str.at(i);
         }
     }
 
@@ -41,9 +41,9 @@ public:
         {
             rng();
         }
-        for (int i = 0; i < 9; ++i)
+        for (size_t i = 0; i < 9; ++i)
         {
-            guess_num[i] = i + 1;
+            guess_num[i] = static_cast<char>(i + '1');
         }
     }
 
@@ -84,7 +84,7 @@ public:
             ++n;
             return;
         }
-        for (int i = 0; i < 9; ++i)
+        for (size_t i = 0; i < 9; ++i)
         {
             if (n > 2)
             {
@@ -106,7 +106,6 @@ public:
         return n;
     }
 
-
     bool solve()
     {
         int row, col;
@@ -115,7 +114,7 @@ public:
         {
             return true;
         }
-        for (int i = 0; i < 9; ++i)
+        for (size_t i = 0; i < 9; ++i)
         {
             if (is_safe(row, col, guess_num[i]))
             {
@@ -139,14 +138,15 @@ public:
             break;
         case DIAGONAL:
             generate_diagonal(difficulty);
+            break;
         }
     }
 
     void dump(std::ostream &os) const
     {
-        for (int i = 0; i < 81; ++i)
+        for (size_t i = 0; i < 81; ++i)
         {
-            os << static_cast<char>(board[i] + '0');
+            os << board.at(i);
         }
     }
 
@@ -155,19 +155,19 @@ public:
     friend std::ostream &operator<<(std::ostream &os, const sudoku &game);
 
 private:
-    std::array<int, 81> board;
-    std::array<int, 9> guess_num;
+    std::array<char, 81> board;
+    std::array<char, 9> guess_num;
     std::mt19937 rng;
-    static constexpr int EMPTY = 0;
+    static constexpr char EMPTY = '0';
 
-    inline void set(int row, int col, int num)
+    inline void set(int row, int col, char num)
     {
-        board[row * 9 + col] = num;
+        board[static_cast<size_t>(row * 9 + col)] = num;
     }
 
-    inline int get(int row, int col) const
+    inline char get(int row, int col) const
     {
-        return board[row * 9 + col];
+        return board[static_cast<size_t>(row * 9 + col)];
     }
 
     inline bool is_empty(int row, int col) const
@@ -234,7 +234,7 @@ private:
             {
                 int row = rng() % 9;
                 int col = rng() % 9;
-                int num = 1 + rng() % 9;
+                char num = '1' + static_cast<char>(rng() % 9);
                 if (is_safe(row, col, num))
                 {
                     set(row, col, num);
@@ -254,7 +254,7 @@ private:
     {
         for (int i = 0; i < 9; i += 3)
         {
-            int num_idx = 0;
+            size_t num_idx = 0;
             shuffle_guesses();
             for (int row = 0; row < 3; ++row)
             {
@@ -274,9 +274,7 @@ private:
             {
                 auto board_copy = board;
                 set(row, col, EMPTY);
-                int n_solutions = 0;
-                count_solutions(n_solutions);
-                if (n_solutions > 1)
+                if (count_solutions() > 1)
                 {
                     board = board_copy;
                 }

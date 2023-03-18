@@ -47,10 +47,9 @@ public:
 
     bool find_free_cell(int &row, int &col)
     {
-        int i, j;
-        for (i = 0; i < 9; ++i)
+        for (int i = 0; i < 9; ++i)
         {
-            for (j = 0; j < 9; ++j)
+            for (int j = 0; j < 9; ++j)
             {
                 if (get(i, j) == EMPTY)
                 {
@@ -60,8 +59,6 @@ public:
                 }
             }
         }
-        row = 9;
-        col = 9;
         return false;
     }
 

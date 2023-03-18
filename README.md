@@ -34,3 +34,12 @@ Read Sudoku from stdin and solve it:
 ```
 ./sudoku <<<"780006090045000001020350000003000407070805000000000809010000308000507000007900010"
 ```
+
+
+## Printable Sudokus
+
+You can convert a Sudoku file to SVG with `sudoku2svg`, e.g.:
+
+```
+./sudoku2svg < sudoku-20230318T160133-3.txt > sudoku.svg
+```

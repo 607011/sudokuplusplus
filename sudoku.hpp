@@ -99,7 +99,7 @@ public:
         }
     }
 
-    int count_solutions()
+    int solution_count()
     {
         int n = 0;
         count_solutions(n);
@@ -129,7 +129,7 @@ public:
         return false;
     }
 
-    void generate(int difficulty, generation_algorithm_t algo)
+    void generate(int difficulty, generation_algorithm_t algo = DIAGONAL)
     {
         switch (algo)
         {
@@ -242,7 +242,7 @@ private:
                 }
             }
             ++n_tries;
-            if (count_solutions() != 1)
+            if (solution_count() != 1)
             {
                 reset();
             }
@@ -274,7 +274,7 @@ private:
             {
                 auto board_copy = board;
                 set(row, col, EMPTY);
-                if (count_solutions() > 1)
+                if (solution_count() > 1)
                 {
                     board = board_copy;
                 }

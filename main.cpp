@@ -34,7 +34,7 @@ int solve()
     sudoku game(data);
     std::cout << game << std::endl;
     game.solve();
-    std::cout << "# solutions: " << game.count_solutions() << std::endl;
+    std::cout << "# solutions: " << game.solution_count() << std::endl;
     std::cout << std::endl
               << game
               << std::endl;

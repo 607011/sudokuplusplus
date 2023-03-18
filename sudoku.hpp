@@ -124,8 +124,8 @@ public:
      * 
      * This is a recursive function implementing a backtracking algorithm.
      * 
-     * @return true there's at least one empty cell
-     * @return false no empty cell left, Sudoku is solved
+     * @return true if there's at least one empty cell
+     * @return false if no empty cell left, thus Sudoku is solved
      */
     bool solve()
     {
@@ -150,6 +150,14 @@ public:
         return false;
     }
 
+    /**
+     * @brief Generate Sudoku.
+     * 
+     * @param difficulty 1..6 where 6 is crazy hard
+     * @param algo the method to generate the Sudoku with
+     * @return true if generation was successful
+     * @return false otherwise
+     */
     bool generate(int difficulty, generation_algorithm_t algo = DIAGONAL)
     {
         switch (algo)
@@ -333,7 +341,7 @@ private:
      * After solving the Sudoku each non-empty cell is checked, if it can be cleared and the Sudoku still has exactly one solution.
      * If no unchecked non-empty cell is left or the desired amount of empty cells is reached, the function returns.
      * 
-     * @param difficulty 
+     * @param difficulty 1..6 where 6 is crazy hard
      * @return true if Sudoku contains the desired amount of empty cells
      * @return false otherwise
      */

@@ -4,6 +4,7 @@
 #include <cassert>
 #include <string>
 #include <array>
+#include <vector>
 #include <random>
 #include <algorithm>
 #include <ctime>
@@ -75,6 +76,13 @@ public:
         return false;
     }
 
+    /**
+     * @brief Count the number of solutions.
+     * 
+     * This is a recursive function acting as a solver, implemented as a backtracker.
+     * 
+     * @param[out] n the number of solutions
+     */
     void count_solutions(int &n)
     {
         int row, col;
@@ -99,6 +107,11 @@ public:
         }
     }
 
+    /**
+     * @brief Get number of Sudoku's solutions.
+     * 
+     * @return int number of solutions
+     */
     int solution_count()
     {
         int n = 0;
@@ -106,6 +119,14 @@ public:
         return n;
     }
 
+    /**
+     * @brief Solve Sudoku.
+     * 
+     * This is a recursive function implementing a backtracking algorithm.
+     * 
+     * @return true there's at least one empty cell
+     * @return false no empty cell left, Sudoku is solved
+     */
     bool solve()
     {
         int row, col;
@@ -129,19 +150,24 @@ public:
         return false;
     }
 
-    void generate(int difficulty, generation_algorithm_t algo = DIAGONAL)
+    bool generate(int difficulty, generation_algorithm_t algo = DIAGONAL)
     {
         switch (algo)
         {
         case RANDOMIZED:
-            generate_randomized(difficulty);
+            return generate_randomized(difficulty);
             break;
         case DIAGONAL:
-            generate_diagonal(difficulty);
+            return generate_diagonal(difficulty);
             break;
         }
     }
 
+    /**
+     * @brief Dump board as flattened array to output stream
+     * 
+     * @param os std::ostream to dump to
+     */
     void dump(std::ostream &os) const
     {
         for (size_t i = 0; i < 81; ++i)
@@ -150,26 +176,66 @@ public:
         }
     }
 
+    /**
+     * @brief Count empty cells.
+     * 
+     * @return int number of empty cells
+     */
+    int empty_count() const
+    {
+        return std::count(board.begin(), board.end(), EMPTY);
+    }
+
 #undef DEBUG
 
     friend std::ostream &operator<<(std::ostream &os, const sudoku &game);
 
 private:
+    /**
+     * @brief Holds the Sudoku cells in a flattened array.
+     * 
+     */
     std::array<char, 81> board;
+    /**
+     * @brief Helper array with shuffled digits from 1 to 9
+     * 
+     */
     std::array<char, 9> guess_num;
     std::mt19937 rng;
     static constexpr char EMPTY = '0';
 
+    /**
+     * @brief Set the contents of a certain cell.
+     * 
+     * @param row the cell's row
+     * @param col the cell's column
+     * @param num the cell's new value
+     */
     inline void set(int row, int col, char num)
     {
         board[static_cast<size_t>(row * 9 + col)] = num;
     }
 
+    /**
+     * @brief Get contents of a certain cell.
+     * 
+     * @param row the cell's row
+     * @param col the cell's column
+     * @return char cell contents
+     */
     inline char get(int row, int col) const
     {
         return board[static_cast<size_t>(row * 9 + col)];
     }
 
+    /**
+     * @brief Check if a certain cell is empty.
+     * 
+     * @param row the row of the cell to check
+     * @param col the column of the cell to check
+     * @return true if empty
+     * @return false if not empty
+     */
     inline bool is_empty(int row, int col) const
     {
         return get(row, col) == EMPTY;
@@ -182,7 +248,7 @@ private:
             25,
             35,
             45,
-            52,
+            55,
             58,
             64};
 #pragma GCC diagnostic push
@@ -250,7 +316,28 @@ private:
         return true;
     }
 
-    void generate_diagonal(int difficulty)
+    /**
+     * @brief A helper structure for `generate_diagonal()`.
+     * 
+     */
+    struct cell_pos
+    {
+        int row;
+        int col;
+    };
+
+    /**
+     * @brief Generate Sudoku with "diagonal" algorithm.
+     * 
+     * This function generates a valid Sudoku by randomly filling three diagonal 3x3 boxes.
+     * After solving the Sudoku each non-empty cell is checked, if it can be cleared and the Sudoku still has exactly one solution.
+     * If no unchecked non-empty cell is left or the desired amount of empty cells is reached, the function returns.
+     * 
+     * @param difficulty 
+     * @return true if Sudoku contains the desired amount of empty cells
+     * @return false otherwise
+     */
+    bool generate_diagonal(int difficulty)
     {
         for (int i = 0; i < 9; i += 3)
         {
@@ -265,11 +352,25 @@ private:
             }
         }
         solve();
+        std::cout << "Trying ..." << std::endl << *this << std::endl;
         int empty_cells = min_empty_cells_for_difficulty(difficulty);
-        while (empty_cells > 0)
+        // build a list of all unvisited cells
+        size_t i = 0;
+        std::vector<cell_pos> empty_pos(81);
+        for (int row = 0; row < 9; ++row)
         {
-            int row = rng() % 9;
-            int col = rng() % 9;
+            for (int col = 0; col < 9; ++col)
+            {
+                empty_pos[row * 9 + col] = {row, col};
+            }
+        }
+        std::shuffle(empty_pos.begin(), empty_pos.end(), rng);
+        while (empty_cells > 0 && empty_pos.size() > 0)
+        {
+            auto pos = empty_pos.back();
+            empty_pos.pop_back();
+            int row = pos.row;
+            int col = pos.col;
             if (get(row, col) != EMPTY)
             {
                 auto board_copy = board;
@@ -284,6 +385,7 @@ private:
                 }
             }
         }
+        return empty_cells == 0;
     }
 };
 

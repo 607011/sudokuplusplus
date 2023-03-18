@@ -48,7 +48,14 @@ int generate(int difficulty)
     sudoku game;
     while (true)
     {
-        game.generate(difficulty, sudoku::DIAGONAL);
+        bool ok = game.generate(difficulty, sudoku::DIAGONAL);
+        std::cout << "# empty cells: " << game.empty_count();
+        if (!ok)
+        {
+            std::cout << " ... discarding." << std::endl << std::endl;
+            game.reset();
+            continue;
+        }
         std::cout << std::endl
                   << game
                   << std::endl;
@@ -66,6 +73,7 @@ int generate(int difficulty)
                 ++seq_no;
             } while (std::filesystem::exists(filename));
         }
+        std::cout << "Saving to " << filename << " ... " << std::endl << std::endl;
         std::ofstream out(filename);
         game.dump(out);
         game.reset();

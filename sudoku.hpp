@@ -1,18 +1,36 @@
 #ifndef __SUDOKU_HPP__
 #define __SUDOKU_HPP__
 
+#include <cassert>
+#include <string>
+#include <array>
 #include <random>
 #include <algorithm>
 #include <ctime>
-#include <iostream>
 
 class sudoku
 {
 public:
+    typedef enum
+    {
+        RANDOMIZED,
+        DIAGONAL,
+    } generation_algorithm_t;
+
     sudoku()
     {
         init();
         reset();
+    }
+
+    explicit sudoku(std::string const &board_str)
+        : sudoku()
+    {
+        assert(board.length() == 81);
+        for (int i = 0; i < 81; ++i)
+        {
+            board[i] = board_str.at(i) - '0';
+        }
     }
 
     void init()
@@ -31,19 +49,13 @@ public:
 
     void reset()
     {
-        for (int i = 0; i < 81; ++i)
-        {
-            board[i] = EMPTY;
-        }
+        std::fill(board.begin(), board.end(), EMPTY);
         shuffle_guesses();
     }
 
-    void shuffle_guesses()
+    inline void shuffle_guesses()
     {
-        for (int i = 0; i < 9; ++i)
-        {
-            std::swap(guess_num[i], guess_num[rng() % 9]);
-        }
+        std::shuffle(guess_num.begin(), guess_num.end(), rng);
     }
 
     bool find_free_cell(int &row, int &col)
@@ -52,7 +64,7 @@ public:
         {
             for (int j = 0; j < 9; ++j)
             {
-                if (get(i, j) == EMPTY)
+                if (is_empty(i, j))
                 {
                     row = i;
                     col = j;
@@ -87,58 +99,80 @@ public:
         }
     }
 
-#undef DEBUG
-
-    void generate(int difficulty)
+    int count_solutions()
     {
-        int n_solutions = 0;
-        int n_tries = 1;
-        do
+        int n = 0;
+        count_solutions(n);
+        return n;
+    }
+
+
+    bool solve()
+    {
+        int row, col;
+        bool some_free = find_free_cell(row, col);
+        if (!some_free)
         {
-            int n = 81 - min_empty_cells_for_difficulty(difficulty);
-            while (n > 0)
+            return true;
+        }
+        for (int i = 0; i < 9; ++i)
+        {
+            if (is_safe(row, col, guess_num[i]))
             {
-                int row = rng() % 9;
-                int col = rng() % 9;
-                int num = 1 + rng() % 9;
-                if (is_safe(row, col, num))
+                set(row, col, guess_num[i]);
+                if (solve())
                 {
-                    set(row, col, num);
-                    --n;
+                    return true;
                 }
             }
-#ifndef DEBUG
-            std::cout << '\r' << n_tries << " ... " << std::flush;
-#else
-            std::cout << std::endl;
-            print();
-#endif
-            ++n_tries;
-            n_solutions = 0;
-            count_solutions(n_solutions);
-            if (n_solutions != 1)
-            {
-                reset();
-            }
-        } while (n_solutions != 1);
+            set(row, col, EMPTY);
+        }
+        return false;
     }
+
+    void generate(int difficulty, generation_algorithm_t algo)
+    {
+        switch (algo)
+        {
+        case RANDOMIZED:
+            generate_randomized(difficulty);
+            break;
+        case DIAGONAL:
+            generate_diagonal(difficulty);
+        }
+    }
+
+    void dump(std::ostream &os) const
+    {
+        for (int i = 0; i < 81; ++i)
+        {
+            os << static_cast<char>(board[i] + '0');
+        }
+    }
+
+#undef DEBUG
 
     friend std::ostream &operator<<(std::ostream &os, const sudoku &game);
 
 private:
-    int board[81];
-    int guess_num[9];
+    std::array<int, 81> board;
+    std::array<int, 9> guess_num;
     std::mt19937 rng;
     static constexpr int EMPTY = 0;
+
+    inline void set(int row, int col, int num)
+    {
+        board[row * 9 + col] = num;
+    }
 
     inline int get(int row, int col) const
     {
         return board[row * 9 + col];
     }
 
-    inline void set(int row, int col, int num)
+    inline bool is_empty(int row, int col) const
     {
-        board[row * 9 + col] = num;
+        return get(row, col) == EMPTY;
     }
 
     inline int min_empty_cells_for_difficulty(int difficulty) const
@@ -151,10 +185,10 @@ private:
             52,
             58,
             64};
-        #pragma GCC diagnostic push
-        #pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
         if (difficulty < 1 || difficulty > sizeof(EMPTY_CELLS))
-        #pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
         {
             return -1;
         }
@@ -187,6 +221,71 @@ private:
             }
         }
         return true;
+    }
+
+    bool generate_randomized(int difficulty)
+    {
+        int n_solutions = 0;
+        int n_tries = 1;
+        do
+        {
+            int n = 81 - min_empty_cells_for_difficulty(difficulty);
+            while (n > 0)
+            {
+                int row = rng() % 9;
+                int col = rng() % 9;
+                int num = 1 + rng() % 9;
+                if (is_safe(row, col, num))
+                {
+                    set(row, col, num);
+                    --n;
+                }
+            }
+            ++n_tries;
+            if (count_solutions() != 1)
+            {
+                reset();
+            }
+        } while (n_solutions != 1);
+        return true;
+    }
+
+    void generate_diagonal(int difficulty)
+    {
+        for (int i = 0; i < 9; i += 3)
+        {
+            int num_idx = 0;
+            shuffle_guesses();
+            for (int row = 0; row < 3; ++row)
+            {
+                for (int col = 0; col < 3; ++col)
+                {
+                    set(row + i, col + i, guess_num[num_idx++]);
+                }
+            }
+        }
+        solve();
+        int empty_cells = min_empty_cells_for_difficulty(difficulty);
+        while (empty_cells > 0)
+        {
+            int row = rng() % 9;
+            int col = rng() % 9;
+            if (get(row, col) != EMPTY)
+            {
+                auto board_copy = board;
+                set(row, col, EMPTY);
+                int n_solutions = 0;
+                count_solutions(n_solutions);
+                if (n_solutions > 1)
+                {
+                    board = board_copy;
+                }
+                else
+                {
+                    --empty_cells;
+                }
+            }
+        }
     }
 };
 

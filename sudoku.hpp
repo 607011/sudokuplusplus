@@ -4,6 +4,7 @@
 #include <random>
 #include <algorithm>
 #include <ctime>
+#include <iostream>
 
 class sudoku
 {

@@ -2,6 +2,7 @@
 *.svg
 .DS_Store
 sudoku
+sudokus/
 .vscode/
 CMakeFiles/
 Makefile

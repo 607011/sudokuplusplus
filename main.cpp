@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     int difficulty = argc == 2
                          ? std::max(1, std::min(6, std::atoi(argv[1])))
                          : 3;
-    std::cout << "Generating games for difficulty " << difficulty << " ..." << std::endl;
+    std::cout << "Generating games with difficulty " << difficulty << " ..." << std::endl;
     std::cout << "(Press Ctrl+C to break.)" << std::endl;
     sudoku game;
     while (true)

@@ -23,9 +23,17 @@ int main(int argc, char *argv[])
     if (ftell(stdin) > 0)
     {
         rewind(stdin);
+        std::string data;
         std::string line;
-        std::getline(std::cin, line);
-        sudoku game(line);
+        while (std::getline(std::cin, line)) {
+            data.append(line);
+        }
+        if (data.length() != 81)
+        {
+            std::cerr << "Board data must contain exactly 81 digits." << std::endl;
+            return EXIT_FAILURE;
+        }
+        sudoku game(data);
         std::cout << game << std::endl;
         game.solve();
         std::cout << "# solutions: " << game.count_solutions() << std::endl;

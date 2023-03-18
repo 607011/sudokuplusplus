@@ -13,6 +13,11 @@ add_executable(sudoku
 )
 set_target_properties(sudoku PROPERTIES LINK_FLAGS_RELEASE "-dead_strip")
 
+add_executable(sudoku2svg
+  sudoku2svg.cpp
+)
+
+
 if(UNIX)
   set(PLATFORM_DEPENDENT_LIBRARIES, "-lpthread")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -pthread -O0 -ggdb")

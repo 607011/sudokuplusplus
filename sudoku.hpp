@@ -45,9 +45,13 @@ public:
         {
             rng();
         }
-        for (size_t i = 0; i < 9; ++i)
+        for (int i = 0; i < 9; ++i)
         {
             guess_num[i] = static_cast<char>(i + '1');
+        }
+        for (int i = 0; i < 81; ++i)
+        {
+            unvisited[i] = {i / 9, i % 9};
         }
     }
 
@@ -64,16 +68,13 @@ public:
 
     bool find_free_cell(int &row, int &col)
     {
-        for (int i = 0; i < 9; ++i)
+        for (int i = 0; i < 81; ++i)
         {
-            for (int j = 0; j < 9; ++j)
+            if (board.at(i) == EMPTY)
             {
-                if (is_empty(i, j))
-                {
-                    row = i;
-                    col = j;
-                    return true;
-                }
+                row = i / 9;
+                col = i % 9;
+                return true;
             }
         }
         return false;
@@ -81,9 +82,9 @@ public:
 
     /**
      * @brief Count the number of solutions.
-     * 
+     *
      * This is a recursive function acting as a solver, implemented as a backtracker.
-     * 
+     *
      * @param[out] n the number of solutions
      */
     void count_solutions(int &n)
@@ -95,7 +96,7 @@ public:
             ++n;
             return;
         }
-        for (size_t i = 0; i < 9; ++i)
+        for (int i = 0; i < 9; ++i)
         {
             if (n > 2)
             {
@@ -106,13 +107,13 @@ public:
                 set(row, col, guess_num[i]);
                 count_solutions(n);
             }
-            set(row, col, EMPTY);
+            set(row, col, EMPTY); // backtrack
         }
     }
 
     /**
      * @brief Get number of Sudoku's solutions.
-     * 
+     *
      * @return int number of solutions
      */
     int solution_count()
@@ -124,9 +125,9 @@ public:
 
     /**
      * @brief Solve Sudoku.
-     * 
+     *
      * This is a recursive function implementing a backtracking algorithm.
-     * 
+     *
      * @return true if there's at least one empty cell
      * @return false if no empty cell left, thus Sudoku is solved
      */
@@ -148,14 +149,14 @@ public:
                     return true;
                 }
             }
-            set(row, col, EMPTY);
+            set(row, col, EMPTY); // backtrack
         }
         return false;
     }
 
     /**
      * @brief Generate Sudoku.
-     * 
+     *
      * @param difficulty 1..6 where 6 is crazy hard
      * @param algo the method to generate the Sudoku with
      * @return true if generation was successful
@@ -176,7 +177,7 @@ public:
 
     /**
      * @brief Dump board as flattened array to output stream
-     * 
+     *
      * @param os std::ostream to dump to
      */
     void dump(std::ostream &os) const
@@ -189,10 +190,10 @@ public:
 
     /**
      * @brief Count empty cells.
-     * 
+     *
      * @return int number of empty cells
      */
-    int empty_count() const
+    inline int empty_count() const
     {
         return std::count(board.begin(), board.end(), EMPTY);
     }
@@ -202,22 +203,46 @@ public:
     friend std::ostream &operator<<(std::ostream &os, const sudoku &game);
 
 private:
-    /**
-     * @brief Holds the Sudoku cells in a flattened array.
-     * 
-     */
-    std::array<char, 81> board;
-    /**
-     * @brief Helper array with shuffled digits from 1 to 9
-     * 
-     */
-    std::array<char, 9> guess_num;
-    std::mt19937 rng;
     static constexpr char EMPTY = '0';
 
     /**
-     * @brief Set the contents of a certain cell.
+     * @brief Holds the Sudoku cells in a flattened array.
+     *
+     */
+    std::array<char, 81> board;
+
+    /**
+     * @brief Helper array with shuffled digits from 1 to 9
+     *
+     */
+    std::array<char, 9> guess_num;
+
+    /**
+     * @brief Random number generator for a couple of uses.
      * 
+     * The Mersenne Twister is renowned for speed, excellent distribution 
+     * and a looooooong period of 2^19937-1.
+     */
+    std::mt19937 rng;
+
+    /**
+     * @brief A helper structure for `generate_diagonal()`.
+     *
+     */
+    struct cell_pos
+    {
+        int row;
+        int col;
+    };
+
+    /**
+     * @brief List of unvisited cells used in `generate()`.
+     */
+    std::array<cell_pos, 81> unvisited;
+
+    /**
+     * @brief Set the contents of a certain cell.
+     *
      * @param row the cell's row
      * @param col the cell's column
      * @param num the cell's new value
@@ -229,7 +254,7 @@ private:
 
     /**
      * @brief Get contents of a certain cell.
-     * 
+     *
      * @param row the cell's row
      * @param col the cell's column
      * @return char cell contents
@@ -241,7 +266,7 @@ private:
 
     /**
      * @brief Check if a certain cell is empty.
-     * 
+     *
      * @param row the row of the cell to check
      * @param col the column of the cell to check
      * @return true if empty
@@ -262,18 +287,35 @@ private:
             55,
             58,
             64};
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
+#endif
         if (difficulty < 1 || difficulty > sizeof(EMPTY_CELLS))
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
         {
             return -1;
         }
         return EMPTY_CELLS[difficulty];
     }
 
+    /**
+     * @brief Check is placing a number at the designated destinaton is safe.
+     * 
+     * The function check if the given number is either present in
+     * the given row or column or 3x3 box.
+     * 
+     * @param row row to place into
+     * @param col column to place into
+     * @param num number to place
+     * @return true if safe
+     * @return false otherwise
+     */
     bool is_safe(int row, int col, int num) const
     {
+        // check row and column
         for (int i = 0; i < 9; ++i)
         {
             if (get(row, i) == num)
@@ -285,6 +327,7 @@ private:
                 return false;
             }
         }
+        // check 3x3 box
         row -= row % 3;
         col -= col % 3;
         for (int i = row; i < row + 3; ++i)
@@ -300,6 +343,16 @@ private:
         return true;
     }
 
+    /**
+     * @brief Try to generate a Sudoku by chance.
+     * 
+     * This seems to be very inefficient method that is
+     * inferior to the diagonal method in `generate_diagonal()`.
+     * 
+     * @param difficulty 1..6 where 6 is crazy hard
+     * @return true if generation was successful
+     * @return false otherwise (never happens)
+     */
     bool generate_randomized(int difficulty)
     {
         int n_solutions = 0;
@@ -328,22 +381,12 @@ private:
     }
 
     /**
-     * @brief A helper structure for `generate_diagonal()`.
-     * 
-     */
-    struct cell_pos
-    {
-        int row;
-        int col;
-    };
-
-    /**
      * @brief Generate Sudoku with "diagonal" algorithm.
-     * 
+     *
      * This function generates a valid Sudoku by randomly filling three diagonal 3x3 boxes.
      * After solving the Sudoku each non-empty cell is checked, if it can be cleared and the Sudoku still has exactly one solution.
      * If no unchecked non-empty cell is left or the desired amount of empty cells is reached, the function returns.
-     * 
+     *
      * @param difficulty 1..6 where 6 is crazy hard
      * @return true if Sudoku contains the desired amount of empty cells
      * @return false otherwise
@@ -363,23 +406,16 @@ private:
             }
         }
         solve();
-        std::cout << "Trying ..." << std::endl << *this << std::endl;
+        std::cout << "Trying ..." << std::endl
+                  << *this << std::endl;
         int empty_cells = min_empty_cells_for_difficulty(difficulty);
-        // build a list of all unvisited cells
-        size_t i = 0;
-        std::vector<cell_pos> empty_pos(81);
-        for (int row = 0; row < 9; ++row)
+        std::shuffle(unvisited.begin(), unvisited.end(), rng);
+        size_t visited_idx = unvisited.size() - 1;
+        // visit cells one after the other until all are visited
+        // or the desired amount of empty cells is reached
+        while (empty_cells > 0 && visited_idx > 0)
         {
-            for (int col = 0; col < 9; ++col)
-            {
-                empty_pos[row * 9 + col] = {row, col};
-            }
-        }
-        std::shuffle(empty_pos.begin(), empty_pos.end(), rng);
-        while (empty_cells > 0 && empty_pos.size() > 0)
-        {
-            auto pos = empty_pos.back();
-            empty_pos.pop_back();
+            auto const &pos = unvisited[visited_idx--];
             int row = pos.row;
             int col = pos.col;
             if (get(row, col) != EMPTY)

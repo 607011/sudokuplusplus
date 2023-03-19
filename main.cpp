@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
     {
         int difficulty = argc == 2
                              ? std::max(25, std::min(64, std::atoi(argv[1])))
-                             : 3;
+                             : 50;
         return generate(difficulty);
     }
     return EXIT_SUCCESS;

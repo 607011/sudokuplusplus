@@ -100,6 +100,13 @@ int generate(int difficulty)
                   << std::endl;
         std::ofstream out(filename);
         game.dump(out);
+#ifdef WITH_GENERATIONS
+        for (auto const& generation : game.generations())
+        {
+            out << std::endl;
+            out.write(generation.data(), generation.size());
+        }
+#endif
         game.reset();
     }
     return EXIT_SUCCESS;

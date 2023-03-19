@@ -31,6 +31,7 @@
 #include <algorithm>
 #include <iostream>
 #include <ctime>
+#include <vector>
 
 #include "util.hpp"
 
@@ -225,10 +226,21 @@ public:
         return std::count(board.begin(), board.end(), EMPTY);
     }
 
+#ifdef WITH_GENERATIONS
+    std::vector<std::array<char, 81>> const &generations() const
+    {
+        return evolution;
+    }
+#endif
+
     friend std::ostream &operator<<(std::ostream &os, const sudoku &game);
 
 private:
     static constexpr char EMPTY = '0';
+
+#ifdef WITH_GENERATIONS
+    std::vector<std::array<char, 81>> evolution;
+#endif
 
     /**
      * @brief Holds the Sudoku cells in a flattened array.
@@ -377,6 +389,9 @@ private:
      */
     bool generate_diagonal(const int difficulty)
     {
+#ifdef WITH_GENERATIONS
+        evolution.clear();
+#endif
         for (int i = 0; i < 9; i += 3)
         {
             int num_idx = 0;
@@ -407,6 +422,9 @@ private:
                 if (solution_count() == 1)
                 {
                     --empty_cells;
+#ifdef WITH_GENERATIONS
+                    evolution.push_back(board);
+#endif
                 }
                 else
                 {

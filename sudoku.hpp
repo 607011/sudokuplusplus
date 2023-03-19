@@ -7,7 +7,10 @@
 #include <vector>
 #include <random>
 #include <algorithm>
+#include <iostream>
 #include <ctime>
+
+#include "util.hpp"
 
 class sudoku
 {
@@ -36,7 +39,7 @@ public:
 
     void init()
     {
-        rng.seed((unsigned int)time(nullptr));
+        rng.seed(util::make_seed());
         // warmup RNG
         for (int i = 0; i < 1000; ++i)
         {

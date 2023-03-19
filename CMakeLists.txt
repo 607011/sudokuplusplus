@@ -10,6 +10,7 @@ project(sudoku)
 add_executable(sudoku
   main.cpp
   sudoku.cpp
+  util.cpp
 )
 set_target_properties(sudoku PROPERTIES LINK_FLAGS_RELEASE "-dead_strip")
 

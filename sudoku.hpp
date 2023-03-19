@@ -63,7 +63,7 @@ public:
     {
         rng.seed(util::make_seed());
         // warmup RNG
-        for (int i = 0; i < 1000; ++i)
+        for (int i = 0; i < 10'000; ++i)
         {
             rng();
         }
@@ -73,7 +73,7 @@ public:
         }
         for (int i = 0; i < 81; ++i)
         {
-            unvisited[i] = {i / 9, i % 9};
+            unvisited[i] = i;
         }
     }
 
@@ -169,7 +169,7 @@ public:
         {
             return true;
         }
-        for (size_t i = 0; i < 9; ++i)
+        for (int i = 0; i < 9; ++i)
         {
             if (is_safe(row, col, guess_num[i]))
             {
@@ -187,12 +187,12 @@ public:
     /**
      * @brief Generate Sudoku.
      *
-     * @param difficulty 1..6 where 6 is crazy hard
+     * @param difficulty 25..64 where 64 is crazy hard
      * @param algo the method to generate the Sudoku with
      * @return true if generation was successful
      * @return false otherwise
      */
-    bool generate(int difficulty, generation_algorithm_t algo = DIAGONAL)
+    bool generate(const int difficulty, generation_algorithm_t algo = DIAGONAL)
     {
         switch (algo)
         {
@@ -212,10 +212,7 @@ public:
      */
     void dump(std::ostream &os) const
     {
-        for (size_t i = 0; i < 81; ++i)
-        {
-            os << board.at(i);
-        }
+        os.write(board.data(), board.size());
     }
 
     /**
@@ -248,25 +245,19 @@ private:
     /**
      * @brief Random number generator for a couple of uses.
      * 
-     * The Mersenne Twister is renowned for speed, excellent distribution 
+     * The Mersenne-Twister is known for speed, quite good distribution 
      * and a looooooong period of 2^19937-1.
+     * 
+     * A better variant of MT exists: SFMT is better in terms of speed
+     * and robustness against statistical tests.
+     * TODO: Exchange MT19937 for SFMT (http://www.math.sci.hiroshima-u.ac.jp/m-mat/MT/SFMT/)
      */
     std::mt19937 rng;
 
     /**
-     * @brief A helper structure for `generate_diagonal()`.
-     *
-     */
-    struct cell_pos
-    {
-        int row;
-        int col;
-    };
-
-    /**
      * @brief List of unvisited cells used in `generate()`.
      */
-    std::array<cell_pos, 81> unvisited;
+    std::array<int, 81> unvisited;
 
     /**
      * @brief Set the contents of a certain cell.
@@ -293,44 +284,7 @@ private:
     }
 
     /**
-     * @brief Check if a certain cell is empty.
-     *
-     * @param row the row of the cell to check
-     * @param col the column of the cell to check
-     * @return true if empty
-     * @return false if not empty
-     */
-    inline bool is_empty(int row, int col) const
-    {
-        return get(row, col) == EMPTY;
-    }
-
-    inline int min_empty_cells_for_difficulty(int difficulty) const
-    {
-        static const int EMPTY_CELLS[7] = {
-            -1,
-            25,
-            35,
-            45,
-            55,
-            58,
-            64};
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-#endif
-        if (difficulty < 1 || difficulty > sizeof(EMPTY_CELLS))
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
-        {
-            return -1;
-        }
-        return EMPTY_CELLS[difficulty];
-    }
-
-    /**
-     * @brief Check is placing a number at the designated destinaton is safe.
+     * @brief Check if placing a number at the designated destinaton is safe.
      * 
      * The function check if the given number is either present in
      * the given row or column or 3x3 box.
@@ -344,16 +298,18 @@ private:
     bool is_safe(int row, int col, int num) const
     {
         // check row and column
-        for (int i = 0; i < 9; ++i)
+        int col_idx = col;
+        for (int row_idx = row*9; row_idx < row*9+9; ++row_idx)
         {
-            if (get(row, i) == num)
+            if (board[row_idx] == num)
             {
                 return false;
             }
-            if (get(i, col) == num)
+            if (board[col_idx] == num)
             {
                 return false;
             }
+            col_idx += 9;
         }
         // check 3x3 box
         row -= row % 3;
@@ -377,17 +333,17 @@ private:
      * This seems to be very inefficient method that is
      * inferior to the diagonal method in `generate_diagonal()`.
      * 
-     * @param difficulty 1..6 where 6 is crazy hard
+     * @param difficulty 25..64 where 64 is crazy hard
      * @return true if generation was successful
      * @return false otherwise (never happens)
      */
-    bool generate_randomized(int difficulty)
+    bool generate_randomized(const int difficulty)
     {
         int n_solutions = 0;
         int n_tries = 1;
         do
         {
-            int n = 81 - min_empty_cells_for_difficulty(difficulty);
+            int n = 81 - difficulty;
             while (n > 0)
             {
                 int row = rng() % 9;
@@ -415,15 +371,15 @@ private:
      * After solving the Sudoku each non-empty cell is checked, if it can be cleared and the Sudoku still has exactly one solution.
      * If no unchecked non-empty cell is left or the desired amount of empty cells is reached, the function returns.
      *
-     * @param difficulty 1..6 where 6 is crazy hard
+     * @param difficulty 25..64 where 64 is crazy hard
      * @return true if Sudoku contains the desired amount of empty cells
      * @return false otherwise
      */
-    bool generate_diagonal(int difficulty)
+    bool generate_diagonal(const int difficulty)
     {
         for (int i = 0; i < 9; i += 3)
         {
-            size_t num_idx = 0;
+            int num_idx = 0;
             shuffle_guesses();
             for (int row = 0; row < 3; ++row)
             {
@@ -436,21 +392,19 @@ private:
         solve();
         std::cout << "Trying ..." << std::endl
                   << *this << std::endl;
-        int empty_cells = min_empty_cells_for_difficulty(difficulty);
-        std::shuffle(unvisited.begin(), unvisited.end(), rng);
-        size_t visited_idx = unvisited.size() - 1;
-        // visit cells one after the other until all are visited
+        // visit cells in random order until all are visited
         // or the desired amount of empty cells is reached
-        while (empty_cells > 0 && visited_idx > 0)
+        int empty_cells = difficulty;
+        int visited_idx = static_cast<int>(unvisited.size());
+        std::shuffle(unvisited.begin(), unvisited.end(), rng);
+        while (empty_cells > 0 && visited_idx-- > 0)
         {
-            auto const &pos = unvisited[visited_idx--];
-            int row = pos.row;
-            int col = pos.col;
-            if (get(row, col) != EMPTY)
+            const int pos = unvisited.at(visited_idx);
+            if (board[pos] != EMPTY)
             {
                 auto board_copy = board;
-                set(row, col, EMPTY);
-                if (solution_count() > 1)
+                board[pos] = EMPTY;
+                if (solution_count() != 1)
                 {
                     board = board_copy;
                 }

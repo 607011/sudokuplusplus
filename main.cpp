@@ -42,18 +42,18 @@ std::string iso_datetime()
 
 int solve()
 {
-    std::string data;
+    std::string board_data;
     std::string line;
     while (std::getline(std::cin, line))
     {
-        data.append(line);
+        board_data.append(line);
     }
-    if (data.length() != 81)
+    if (board_data.length() != 81)
     {
         std::cerr << "Board data must contain exactly 81 digits." << std::endl;
         return EXIT_FAILURE;
     }
-    sudoku game(data);
+    sudoku game(board_data);
     std::cout << game << std::endl;
     game.solve();
     std::cout << "# solutions: " << game.solution_count() << std::endl;
@@ -74,7 +74,8 @@ int generate(int difficulty)
         std::cout << "# empty cells: " << game.empty_count();
         if (!ok)
         {
-            std::cout << " ... discarding." << std::endl << std::endl;
+            std::cout << " ... discarding." << std::endl
+                      << std::endl;
             game.reset();
             continue;
         }
@@ -95,7 +96,8 @@ int generate(int difficulty)
                 ++seq_no;
             } while (std::filesystem::exists(filename));
         }
-        std::cout << "Saving to " << filename << " ... " << std::endl << std::endl;
+        std::cout << "Saving to " << filename << " ... " << std::endl
+                  << std::endl;
         std::ofstream out(filename);
         game.dump(out);
         game.reset();
@@ -114,7 +116,7 @@ int main(int argc, char *argv[])
     else
     {
         int difficulty = argc == 2
-                             ? std::max(1, std::min(6, std::atoi(argv[1])))
+                             ? std::max(25, std::min(64, std::atoi(argv[1])))
                              : 3;
         return generate(difficulty);
     }

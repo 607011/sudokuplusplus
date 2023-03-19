@@ -26,12 +26,9 @@
 
 std::ostream &operator<<(std::ostream &os, const sudoku &game)
 {
-    for (int row = 0; row < 9; ++row)
+    for (int i = 0; i < 81; i += 9)
     {
-        for (int col = 0; col < 9; ++col)
-        {
-            os << game.get(row, col);
-        }
+        os.write(game.board.data() + i, 9);
         os << std::endl;
     }
     return os;

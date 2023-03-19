@@ -404,13 +404,13 @@ private:
             {
                 auto board_copy = board;
                 board[pos] = EMPTY;
-                if (solution_count() != 1)
+                if (solution_count() == 1)
                 {
-                    board = board_copy;
+                    --empty_cells;
                 }
                 else
                 {
-                    --empty_cells;
+                    board = board_copy;
                 }
             }
         }

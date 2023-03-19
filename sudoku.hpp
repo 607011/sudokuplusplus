@@ -88,6 +88,14 @@ public:
         std::shuffle(guess_num.begin(), guess_num.end(), rng);
     }
 
+    /**
+     * @brief Find empty cell.
+     * 
+     * @param[out] row the row of the cell found, if any
+     * @param[out] col the columns of the cell found, if any
+     * @return true if an empty cell could be found
+     * @return false otherwise
+     */
     bool find_free_cell(int &row, int &col)
     {
         for (int i = 0; i < 81; ++i)
@@ -219,8 +227,6 @@ public:
     {
         return std::count(board.begin(), board.end(), EMPTY);
     }
-
-#undef DEBUG
 
     friend std::ostream &operator<<(std::ostream &os, const sudoku &game);
 

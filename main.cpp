@@ -120,11 +120,8 @@ int main(int argc, char *argv[])
         rewind(stdin);
         return solve();
     }
-    else
-    {
-        int difficulty = argc == 2
-                             ? std::max(25, std::min(64, std::atoi(argv[1])))
-                             : 50;
-        return generate(difficulty);
-    }
+    int difficulty = argc == 2
+                          ? std::max(25, std::min(64, std::atoi(argv[1])))
+                          : 50;
+    return generate(difficulty);
 }

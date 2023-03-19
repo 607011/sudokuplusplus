@@ -31,7 +31,7 @@
 
 #include "sudoku.hpp"
 
-std::string iso_datetime()
+std::string iso_datetime_now()
 {
     time_t now;
     time(&now);
@@ -83,7 +83,7 @@ int generate(int difficulty)
                   << game
                   << std::endl;
         std::stringstream ss;
-        ss << "sudoku-" << iso_datetime() << '-' << difficulty << ".txt";
+        ss << "sudoku-" << iso_datetime_now() << '-' << difficulty << ".txt";
         std::string filename = ss.str();
         if (std::filesystem::exists(filename))
         {
@@ -91,7 +91,7 @@ int generate(int difficulty)
             do
             {
                 std::stringstream ss;
-                ss << "sudoku-" << iso_datetime() << '-' << difficulty << " (" << seq_no << ").txt";
+                ss << "sudoku-" << iso_datetime_now() << '-' << difficulty << " (" << seq_no << ").txt";
                 filename = ss.str();
                 ++seq_no;
             } while (std::filesystem::exists(filename));

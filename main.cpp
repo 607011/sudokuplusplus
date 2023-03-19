@@ -69,53 +69,52 @@ int generate(int difficulty)
     std::cout << "Generating games with difficulty " << difficulty << " ..." << std::endl;
     std::cout << "(Press Ctrl+C to break.)" << std::endl;
     sudoku game;
-    int n_games_produced = 0;
-    time_t t0;
-    time(&t0);
+    long n_games_produced = 0;
+    time_t t0 = time(nullptr);
     while (true)
     {
         bool ok = game.generate(difficulty);
-        time_t t1;
-        time(&t1);
+        time_t t1 = time(nullptr);
         ++n_games_produced;
-        auto dt = std::max(1LL, t1 - t0);
+        auto dt = t1 > t0 ? t1 - t0 : 1;
         std::cout << (n_games_produced / dt) << " games/sec" << std::endl;
         std::cout << "# empty cells: " << game.empty_count();
         if (!ok)
         {
             std::cout << " ... discarding." << std::endl
                       << std::endl;
-            game.reset();
-            continue;
         }
-        std::cout << std::endl
-                  << game
-                  << std::endl;
-        std::stringstream ss;
-        ss << "sudoku-" << iso_datetime_now() << '-' << difficulty << ".txt";
-        std::string filename = ss.str();
-        if (std::filesystem::exists(filename))
+        else
         {
-            int seq_no = 0;
-            do
+            std::cout << std::endl
+                      << game
+                      << std::endl;
+            std::stringstream ss;
+            ss << "sudoku-" << iso_datetime_now() << '-' << difficulty << ".txt";
+            std::string filename = ss.str();
+            if (std::filesystem::exists(filename))
             {
-                ss.clear();
-                ss << "sudoku-" << iso_datetime_now() << '-' << difficulty << " (" << seq_no << ").txt";
-                filename = ss.str();
-                ++seq_no;
-            } while (std::filesystem::exists(filename));
-        }
-        std::cout << "Saving to " << filename << " ... " << std::endl
-                  << std::endl;
-        std::ofstream out(filename);
-        game.dump(out);
+                int seq_no = 0;
+                do
+                {
+                    ss.clear();
+                    ss << "sudoku-" << iso_datetime_now() << '-' << difficulty << " (" << seq_no << ").txt";
+                    filename = ss.str();
+                    ++seq_no;
+                } while (std::filesystem::exists(filename));
+            }
+            std::cout << "Saving to " << filename << " ... " << std::endl
+                      << std::endl;
+            std::ofstream out(filename);
+            game.dump(out);
 #ifdef WITH_GENERATIONS
-        for (auto const& generation : game.generations())
-        {
-            out << std::endl;
-            out.write(generation.data(), generation.size());
-        }
+            for (auto const &generation : game.generations())
+            {
+                out << std::endl;
+                out.write(generation.data(), generation.size());
+            }
 #endif
+        }
         game.reset();
     }
     return EXIT_SUCCESS;
@@ -130,7 +129,7 @@ int main(int argc, char *argv[])
         return solve();
     }
     int difficulty = argc == 2
-                          ? std::max(25, std::min(64, std::atoi(argv[1])))
-                          : 50;
+                         ? std::max(25, std::min(64, std::atoi(argv[1])))
+                         : 50;
     return generate(difficulty);
 }

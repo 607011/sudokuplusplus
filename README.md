@@ -18,7 +18,7 @@ where `difficulty` is an integer number between 25 and 64, meaning fields left e
 Each Sudoku found will be written to a text file named like sudoku-[ISO8601DateTime]-[difficulty] [seq_no].txt with a contents like (`0` denotes an empty field):
 
 ```
-780006090045000001020350000003000407070805000000000809010000308000507000007900010
+007000000060000800000020031000032004805090000070006000501000000000500060000400070
 ```
 
 ## Solve sudokus
@@ -26,13 +26,13 @@ Each Sudoku found will be written to a text file named like sudoku-[ISO8601DateT
 Read Sudoku from file and solve it:
 
 ```
-./sudoku < sudoku-20230318T160133-3.txt
+./sudoku < sudoku-20230318T160133-61.txt
 ```
 
 Read Sudoku from stdin and solve it:
 
 ```
-./sudoku <<<"780006090045000001020350000003000407070805000000000809010000308000507000007900010"
+./sudoku <<<"007000000060000800000020031000032004805090000070006000501000000000500060000400070"
 ```
 
 
@@ -41,5 +41,5 @@ Read Sudoku from stdin and solve it:
 You can convert a Sudoku file to SVG with `sudoku2svg`, e.g.:
 
 ```
-./sudoku2svg < sudoku-20230318T160133-3.txt > sudoku.svg
+./sudoku2svg < sudoku-20230318T160133-61.txt > sudoku.svg
 ```

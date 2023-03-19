@@ -70,7 +70,7 @@ int generate(int difficulty)
     sudoku game;
     while (true)
     {
-        bool ok = game.generate(difficulty, sudoku::DIAGONAL);
+        bool ok = game.generate(difficulty);
         std::cout << "# empty cells: " << game.empty_count();
         if (!ok)
         {

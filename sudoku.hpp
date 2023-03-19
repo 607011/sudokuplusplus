@@ -38,12 +38,6 @@
 class sudoku
 {
 public:
-    typedef enum
-    {
-        RANDOMIZED,
-        DIAGONAL,
-    } generation_algorithm_t;
-
     sudoku()
     {
         init();
@@ -186,27 +180,6 @@ public:
     }
 
     /**
-     * @brief Generate Sudoku.
-     *
-     * @param difficulty 25..64 where 64 is crazy hard
-     * @param algo the method to generate the Sudoku with
-     * @return true if generation was successful
-     * @return false otherwise
-     */
-    bool generate(const int difficulty, generation_algorithm_t algo = DIAGONAL)
-    {
-        switch (algo)
-        {
-        case RANDOMIZED:
-            return generate_randomized(difficulty);
-            break;
-        case DIAGONAL:
-            return generate_diagonal(difficulty);
-            break;
-        }
-    }
-
-    /**
      * @brief Dump board as flattened array to output stream
      *
      * @param os std::ostream to dump to
@@ -232,6 +205,65 @@ public:
         return evolution;
     }
 #endif
+
+    /**
+     * @brief Generate Sudoku with "diagonal" algorithm.
+     *
+     * This function generates a valid Sudoku by randomly filling three diagonal 3x3 boxes.
+     * After solving the Sudoku each non-empty cell is checked, if it can be cleared and the Sudoku still has exactly one solution.
+     * If no unchecked non-empty cell is left or the desired amount of empty cells is reached, the function returns.
+     *
+     * @param difficulty 25..64 where 64 is crazy hard
+     * @return true if Sudoku contains the desired amount of empty cells
+     * @return false otherwise
+     */
+    bool generate(const int difficulty)
+    {
+#ifdef WITH_GENERATIONS
+        evolution.clear();
+#endif
+        for (int i = 0; i < 9; i += 3)
+        {
+            int num_idx = 0;
+            shuffle_guesses();
+            for (int row = 0; row < 3; ++row)
+            {
+                for (int col = 0; col < 3; ++col)
+                {
+                    set(row + i, col + i, guess_num[num_idx++]);
+                }
+            }
+        }
+        solve();
+        std::cout << "Trying ..." << std::endl
+                  << *this << std::endl;
+        // visit cells in random order until all are visited
+        // or the desired amount of empty cells is reached
+        int empty_cells = difficulty;
+        int visited_idx = static_cast<int>(unvisited.size());
+        std::shuffle(unvisited.begin(), unvisited.end(), rng);
+        while (empty_cells > 0 && visited_idx-- > 0)
+        {
+            const int pos = unvisited.at(visited_idx);
+            if (board[pos] != EMPTY)
+            {
+                auto board_copy = board;
+                board[pos] = EMPTY;
+                if (solution_count() == 1)
+                {
+                    --empty_cells;
+#ifdef WITH_GENERATIONS
+                    evolution.push_back(board);
+#endif
+                }
+                else
+                {
+                    board = board_copy;
+                }
+            }
+        }
+        return empty_cells == 0;
+    }
 
     friend std::ostream &operator<<(std::ostream &os, const sudoku &game);
 
@@ -339,101 +371,6 @@ private:
         return true;
     }
 
-    /**
-     * @brief Try to generate a Sudoku by chance.
-     *
-     * This seems to be very inefficient method that is
-     * inferior to the diagonal method in `generate_diagonal()`.
-     *
-     * @param difficulty 25..64 where 64 is crazy hard
-     * @return true if generation was successful
-     * @return false otherwise (never happens)
-     */
-    bool generate_randomized(const int difficulty)
-    {
-        int n_solutions = 0;
-        int n_tries = 1;
-        do
-        {
-            int n = 81 - difficulty;
-            while (n > 0)
-            {
-                int row = rng() % 9;
-                int col = rng() % 9;
-                char num = '1' + static_cast<char>(rng() % 9);
-                if (is_safe(row, col, num))
-                {
-                    set(row, col, num);
-                    --n;
-                }
-            }
-            ++n_tries;
-            if (solution_count() != 1)
-            {
-                reset();
-            }
-        } while (n_solutions != 1);
-        return true;
-    }
-
-    /**
-     * @brief Generate Sudoku with "diagonal" algorithm.
-     *
-     * This function generates a valid Sudoku by randomly filling three diagonal 3x3 boxes.
-     * After solving the Sudoku each non-empty cell is checked, if it can be cleared and the Sudoku still has exactly one solution.
-     * If no unchecked non-empty cell is left or the desired amount of empty cells is reached, the function returns.
-     *
-     * @param difficulty 25..64 where 64 is crazy hard
-     * @return true if Sudoku contains the desired amount of empty cells
-     * @return false otherwise
-     */
-    bool generate_diagonal(const int difficulty)
-    {
-#ifdef WITH_GENERATIONS
-        evolution.clear();
-#endif
-        for (int i = 0; i < 9; i += 3)
-        {
-            int num_idx = 0;
-            shuffle_guesses();
-            for (int row = 0; row < 3; ++row)
-            {
-                for (int col = 0; col < 3; ++col)
-                {
-                    set(row + i, col + i, guess_num[num_idx++]);
-                }
-            }
-        }
-        solve();
-        std::cout << "Trying ..." << std::endl
-                  << *this << std::endl;
-        // visit cells in random order until all are visited
-        // or the desired amount of empty cells is reached
-        int empty_cells = difficulty;
-        int visited_idx = static_cast<int>(unvisited.size());
-        std::shuffle(unvisited.begin(), unvisited.end(), rng);
-        while (empty_cells > 0 && visited_idx-- > 0)
-        {
-            const int pos = unvisited.at(visited_idx);
-            if (board[pos] != EMPTY)
-            {
-                auto board_copy = board;
-                board[pos] = EMPTY;
-                if (solution_count() == 1)
-                {
-                    --empty_cells;
-#ifdef WITH_GENERATIONS
-                    evolution.push_back(board);
-#endif
-                }
-                else
-                {
-                    board = board_copy;
-                }
-            }
-        }
-        return empty_cells == 0;
-    }
 };
 
 #endif // __SUDOKU_HPP__

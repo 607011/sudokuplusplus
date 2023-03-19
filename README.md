@@ -13,9 +13,9 @@ cmake --build .
 ./sudoku [difficulty]
 ```
 
-where `difficulty` is an integer number between 1 and 6, 6 being hardest.
+where `difficulty` is an integer number between 25 and 64, meaning fields left empty. 64 is hardest possible.
 
-Each Sudoku found will be written to a text file named like sudoku-[ISO8601DateTime]-[difficulty].txt with a contents like (`0` denotes an empty field):
+Each Sudoku found will be written to a text file named like sudoku-[ISO8601DateTime]-[difficulty] [seq_no].txt with a contents like (`0` denotes an empty field):
 
 ```
 780006090045000001020350000003000407070805000000000809010000308000507000007900010

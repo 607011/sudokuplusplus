@@ -28,6 +28,7 @@
 #include <sstream>
 #include <string>
 #include <cstdio>
+#include <utility>
 
 #include "sudoku.hpp"
 
@@ -68,9 +69,17 @@ int generate(int difficulty)
     std::cout << "Generating games with difficulty " << difficulty << " ..." << std::endl;
     std::cout << "(Press Ctrl+C to break.)" << std::endl;
     sudoku game;
+    int n_games_produced = 0;
+    time_t t0;
+    time(&t0);
     while (true)
     {
         bool ok = game.generate(difficulty);
+        time_t t1;
+        time(&t1);
+        ++n_games_produced;
+        auto dt = std::max(1LL, t1 - t0);
+        std::cout << (n_games_produced / dt) << " games/sec" << std::endl;
         std::cout << "# empty cells: " << game.empty_count();
         if (!ok)
         {

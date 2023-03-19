@@ -91,7 +91,7 @@ public:
 
     /**
      * @brief Find empty cell.
-     * 
+     *
      * @param[out] row the row of the cell found, if any
      * @param[out] col the columns of the cell found, if any
      * @return true if an empty cell could be found
@@ -147,7 +147,7 @@ public:
      *
      * @return int number of solutions
      */
-    int solution_count()
+    inline int solution_count()
     {
         int n = 0;
         count_solutions(n);
@@ -211,7 +211,7 @@ public:
      *
      * @param os std::ostream to dump to
      */
-    void dump(std::ostream &os) const
+    inline void dump(std::ostream &os) const
     {
         os.write(board.data(), board.size());
     }
@@ -256,10 +256,10 @@ private:
 
     /**
      * @brief Random number generator for a couple of uses.
-     * 
-     * The Mersenne-Twister is known for speed, quite good distribution 
+     *
+     * The Mersenne-Twister is known for speed, quite good distribution
      * and a looooooong period of 2^19937-1.
-     * 
+     *
      * A better variant of MT exists: SFMT is better in terms of speed
      * and robustness against statistical tests.
      * TODO: Exchange MT19937 for SFMT (http://www.math.sci.hiroshima-u.ac.jp/m-mat/MT/SFMT/)
@@ -297,10 +297,10 @@ private:
 
     /**
      * @brief Check if placing a number at the designated destinaton is safe.
-     * 
+     *
      * The function check if the given number is either present in
      * the given row or column or 3x3 box.
-     * 
+     *
      * @param row row to place into
      * @param col column to place into
      * @param num number to place
@@ -311,7 +311,7 @@ private:
     {
         // check row and column
         int col_idx = col;
-        for (int row_idx = row*9; row_idx < row*9+9; ++row_idx)
+        for (int row_idx = row * 9; row_idx < row * 9 + 9; ++row_idx)
         {
             if (board[row_idx] == num)
             {
@@ -341,10 +341,10 @@ private:
 
     /**
      * @brief Try to generate a Sudoku by chance.
-     * 
+     *
      * This seems to be very inefficient method that is
      * inferior to the diagonal method in `generate_diagonal()`.
-     * 
+     *
      * @param difficulty 25..64 where 64 is crazy hard
      * @return true if generation was successful
      * @return false otherwise (never happens)

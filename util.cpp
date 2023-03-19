@@ -1,5 +1,12 @@
 #include <ctime>
+
+#ifdef __GNUC__
 #include <unistd.h>
+#endif
+
+#ifdef _MSC_VER
+#include <process.h>
+#endif
 
 #include "util.hpp"
 
@@ -37,4 +44,3 @@ unsigned long util::make_seed()
     c = c ^ (b >> 15);
     return c;
 }
-

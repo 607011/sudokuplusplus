@@ -26,9 +26,11 @@ add_executable(sudoku2svg
   sudoku2svg.cpp
 )
 
+if(UNIX)
 add_custom_command(TARGET sudoku
   POST_BUILD
   COMMAND strip sudoku)
+endif(UNIX)
 
 target_include_directories(sudoku
 	PRIVATE ${PROJECT_INCLUDE_DIRS}

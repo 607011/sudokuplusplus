@@ -90,7 +90,7 @@ int generate(int difficulty)
             int seq_no = 0;
             do
             {
-                std::stringstream ss;
+                ss.clear();
                 ss << "sudoku-" << iso_datetime_now() << '-' << difficulty << " (" << seq_no << ").txt";
                 filename = ss.str();
                 ++seq_no;
@@ -127,5 +127,4 @@ int main(int argc, char *argv[])
                              : 50;
         return generate(difficulty);
     }
-    return EXIT_SUCCESS;
 }

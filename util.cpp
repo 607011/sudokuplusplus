@@ -14,7 +14,11 @@ unsigned long util::make_seed()
 {
     auto a = static_cast<unsigned long>(time(nullptr));
     auto b = static_cast<unsigned long>(clock());
+#ifdef _MSC_VER
+    auto c = static_cast<unsigned long>(_getpid());
+#else
     auto c = static_cast<unsigned long>(getpid());
+#endif
     a = a - b;
     a = a - c;
     a = a ^ (c >> 13);

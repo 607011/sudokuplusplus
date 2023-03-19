@@ -60,13 +60,13 @@ public:
         // warmup RNG
         for (int i = 0; i < 10'000; ++i)
         {
-            rng();
+            (void)rng();
         }
-        for (int i = 0; i < 9; ++i)
+        for (size_t i = 0; i < 9; ++i)
         {
             guess_num[i] = static_cast<char>(i + '1');
         }
-        for (int i = 0; i < 81; ++i)
+        for (size_t i = 0; i < 81; ++i)
         {
             unvisited[i] = i;
         }
@@ -91,9 +91,9 @@ public:
      * @return true if an empty cell could be found
      * @return false otherwise
      */
-    bool find_free_cell(int &row, int &col)
+    bool find_free_cell(size_t &row, size_t &col)
     {
-        for (int i = 0; i < 81; ++i)
+        for (size_t i = 0; i < 81; ++i)
         {
             if (board.at(i) == EMPTY)
             {
@@ -114,14 +114,14 @@ public:
      */
     void count_solutions(int &n)
     {
-        int row, col;
+        size_t row, col;
         bool some_free = find_free_cell(row, col);
         if (!some_free)
         {
             ++n;
             return;
         }
-        for (int i = 0; i < 9; ++i)
+        for (size_t i = 0; i < 9; ++i)
         {
             if (n > 2)
             {
@@ -158,13 +158,13 @@ public:
      */
     bool solve()
     {
-        int row, col;
+        size_t row, col;
         bool some_free = find_free_cell(row, col);
         if (!some_free)
         {
             return true;
         }
-        for (int i = 0; i < 9; ++i)
+        for (size_t i = 0; i < 9; ++i)
         {
             if (is_safe(row, col, guess_num[i]))
             {
@@ -186,7 +186,7 @@ public:
      */
     inline void dump(std::ostream &os) const
     {
-        os.write(board.data(), board.size());
+        os.write(board.data(), static_cast<std::streamsize>(board.size()));
     }
 
     /**
@@ -194,7 +194,7 @@ public:
      *
      * @return int number of empty cells
      */
-    inline int empty_count() const
+    inline ptrdiff_t empty_count() const
     {
         return std::count(board.begin(), board.end(), EMPTY);
     }
@@ -222,13 +222,13 @@ public:
 #ifdef WITH_GENERATIONS
         evolution.clear();
 #endif
-        for (int i = 0; i < 9; i += 3)
+        for (size_t i = 0; i < 9; i += 3)
         {
-            int num_idx = 0;
+            size_t num_idx = 0;
             shuffle_guesses();
-            for (int row = 0; row < 3; ++row)
+            for (size_t row = 0; row < 3; ++row)
             {
-                for (int col = 0; col < 3; ++col)
+                for (size_t col = 0; col < 3; ++col)
                 {
                     set(row + i, col + i, guess_num[num_idx++]);
                 }
@@ -240,26 +240,23 @@ public:
         // visit cells in random order until all are visited
         // or the desired amount of empty cells is reached
         int empty_cells = difficulty;
-        int visited_idx = static_cast<int>(unvisited.size());
+        size_t visited_idx = unvisited.size();
         std::shuffle(unvisited.begin(), unvisited.end(), rng);
         while (empty_cells > 0 && visited_idx-- > 0)
         {
-            const int pos = unvisited.at(visited_idx);
-            if (board[pos] != EMPTY)
+            size_t const pos = unvisited.at(visited_idx);
+            char const copy = board.at(pos);
+            board[pos] = EMPTY;
+            if (solution_count() == 1)
             {
-                auto board_copy = board;
-                board[pos] = EMPTY;
-                if (solution_count() == 1)
-                {
-                    --empty_cells;
+                --empty_cells;
 #ifdef WITH_GENERATIONS
-                    evolution.push_back(board);
+                evolution.push_back(board);
 #endif
-                }
-                else
-                {
-                    board = board_copy;
-                }
+            }
+            else
+            {
+                board[pos] = copy;
             }
         }
         return empty_cells == 0;
@@ -301,7 +298,7 @@ private:
     /**
      * @brief List of unvisited cells used in `generate()`.
      */
-    std::array<int, 81> unvisited;
+    std::array<size_t, 81> unvisited;
 
     /**
      * @brief Set the contents of a certain cell.
@@ -310,9 +307,9 @@ private:
      * @param col the cell's column
      * @param num the cell's new value
      */
-    inline void set(int row, int col, char num)
+    inline void set(size_t row, size_t col, char num)
     {
-        board[static_cast<size_t>(row * 9 + col)] = num;
+        board[row * 9 + col] = num;
     }
 
     /**
@@ -322,9 +319,9 @@ private:
      * @param col the cell's column
      * @return char cell contents
      */
-    inline char get(int row, int col) const
+    inline char get(size_t row, size_t col) const
     {
-        return board[static_cast<size_t>(row * 9 + col)];
+        return board.at(row * 9 + col);
     }
 
     /**
@@ -339,17 +336,17 @@ private:
      * @return true if safe
      * @return false otherwise
      */
-    bool is_safe(int row, int col, int num) const
+    bool is_safe(size_t row, size_t col, char num) const
     {
         // check row and column
-        int col_idx = col;
-        for (int row_idx = row * 9; row_idx < row * 9 + 9; ++row_idx)
+        size_t col_idx = col;
+        for (size_t row_idx = row * 9; row_idx < row * 9 + 9; ++row_idx)
         {
-            if (board[row_idx] == num)
+            if (board.at(row_idx) == num)
             {
                 return false;
             }
-            if (board[col_idx] == num)
+            if (board.at(col_idx) == num)
             {
                 return false;
             }
@@ -358,9 +355,9 @@ private:
         // check 3x3 box
         row -= row % 3;
         col -= col % 3;
-        for (int i = row; i < row + 3; ++i)
+        for (size_t i = row; i < row + 3; ++i)
         {
-            for (int j = col; j < col + 3; ++j)
+            for (size_t j = col; j < col + 3; ++j)
             {
                 if (get(i, j) == num)
                 {

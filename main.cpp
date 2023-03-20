@@ -70,11 +70,11 @@ int generate(int difficulty)
     std::cout << "(Press Ctrl+C to break.)" << std::endl;
     sudoku game;
     long n_games_produced = 0;
-    time_t t0 = time(nullptr);
+    auto t0 = time(nullptr);
     while (true)
     {
         bool ok = game.generate(difficulty);
-        time_t t1 = time(nullptr);
+        auto t1 = time(nullptr);
         ++n_games_produced;
         auto dt = t1 > t0 ? t1 - t0 : 1;
         std::cout << (n_games_produced / dt) << " games/sec" << std::endl;

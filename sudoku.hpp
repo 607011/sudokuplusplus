@@ -50,7 +50,9 @@ public:
         assert(board.size() == 81);
         for (size_t i = 0; i < 81U; ++i)
         {
-            board[i] = board_str.at(i);
+            board[i] = board_str.at(i) == '.'
+                           ? EMPTY
+                           : board_str.at(i);
         }
     }
 
@@ -197,6 +199,30 @@ public:
     inline ptrdiff_t empty_count() const
     {
         return std::count(board.begin(), board.end(), EMPTY);
+    }
+
+    /**
+     * @brief Returns a string describing the Sudoku's difficulty.
+     *
+     */
+    std::string level() const
+    {
+        typedef struct
+        {
+            size_t empty_cells;
+            std::string description;
+        } e2d;
+        size_t const difficulty = empty_count();
+        static const std::vector<e2d> lvl = {
+            {25, "LEAD"},
+            {35, "GOLD"},
+            {45, "PLATINUM"},
+            {52, "TITANIUM"},
+            {58, "HARDENED STEEL"},
+            {64, "TUNGSTEN"}};
+        auto const &it = std::find_if(lvl.begin(), lvl.end(), [difficulty](e2d const &c) -> bool
+                                      { return difficulty <= c.empty_cells; });
+        return it->description;
     }
 
 #ifdef WITH_GENERATIONS
@@ -367,7 +393,6 @@ private:
         }
         return true;
     }
-
 };
 
 #endif // __SUDOKU_HPP__

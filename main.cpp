@@ -25,7 +25,6 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
-#include <sstream>
 #include <string>
 #include <cstdio>
 #include <utility>
@@ -55,10 +54,13 @@ int solve()
         return EXIT_FAILURE;
     }
     sudoku game(board_data);
+    size_t empty_count = game.empty_count();
+    std::string level = game.level();
     std::cout << game << std::endl;
     game.solve();
-    std::cout << "# solutions: " << game.solution_count() << std::endl;
-    std::cout << std::endl
+    std::cout << "number of solutions: " << game.solution_count() << std::endl
+              << "level of difficulty: " << level << " (" << empty_count << " of 64)" << std::endl
+              << std::endl
               << game
               << std::endl;
     return EXIT_SUCCESS;
@@ -81,29 +83,28 @@ int generate(int difficulty)
         std::cout << "# empty cells: " << game.empty_count();
         if (!ok)
         {
-            std::cout << " ... discarding." << std::endl
+            std::cout << " ... \u001b[31;1mdiscarded.\u001b[0m" << std::endl
                       << std::endl;
         }
         else
         {
             std::cout << std::endl
+                      << std::endl
+                      << "\u001b[32;1mSuccess!" << std::endl
+                      << std::endl
                       << game
-                      << std::endl;
-            std::stringstream ss;
-            ss << "sudoku-" << iso_datetime_now() << '-' << difficulty << ".txt";
-            std::string filename = ss.str();
+                      << "\u001b[0m" << std::endl;
+            std::string filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(difficulty) + ".txt";
             if (std::filesystem::exists(filename))
             {
                 int seq_no = 0;
                 do
                 {
-                    ss.clear();
-                    ss << "sudoku-" << iso_datetime_now() << '-' << difficulty << " (" << seq_no << ").txt";
-                    filename = ss.str();
+                    filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(difficulty) + " (" + std::to_string(seq_no) + ").txt";
                     ++seq_no;
                 } while (std::filesystem::exists(filename));
             }
-            std::cout << "Saving to " << filename << " ... " << std::endl
+            std::cout << "\u001b[32mSaving to " << filename << " ... \u001b[0m" << std::endl
                       << std::endl;
             std::ofstream out(filename);
             game.dump(out);

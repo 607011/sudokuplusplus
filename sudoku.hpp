@@ -60,7 +60,7 @@ public:
 
     void init()
     {
-        rng.seed(util::make_seed());
+        rng.seed(static_cast<uint32_t>(util::make_seed()));
         // warmup RNG
         for (int i = 0; i < 10'000; ++i)
         {
@@ -198,9 +198,9 @@ public:
      *
      * @return int number of empty cells
      */
-    inline ptrdiff_t empty_count() const
+    inline int empty_count() const
     {
-        return std::count(board.begin(), board.end(), EMPTY);
+        return static_cast<int>(std::count(board.begin(), board.end(), EMPTY));
     }
 
     /**
@@ -211,10 +211,10 @@ public:
     {
         typedef struct
         {
-            size_t empty_cells;
+            int empty_cells;
             std::string description;
         } e2d;
-        size_t const difficulty = empty_count();
+        auto difficulty = empty_count();
         static const std::vector<e2d> lvl = {
             {25, "LEAD"},
             {35, "GOLD"},

@@ -56,13 +56,13 @@ int solve()
         return EXIT_FAILURE;
     }
     sudoku game(board_data);
-    size_t empty_count = game.empty_count();
+    auto empty_count = game.empty_count();
     std::string level = game.level();
     std::cout << game << std::endl;
     game.solve();
-    std::cout << "number of solutions: " << game.solution_count() << std::endl
-              << "level of difficulty: " << level << " (" << empty_count << " of 64)" << std::endl
-              << std::endl
+    std::cout << "number of solutions: " << game.solution_count() << " (" << game.solutions().size() << ")\n"
+              << "level of difficulty: " << level << " (" << empty_count << " of 64)"
+              << "\n\n"
               << game
               << std::endl;
     return EXIT_SUCCESS;
@@ -90,44 +90,38 @@ int generate(int difficulty, unsigned int thread_count)
                 auto t0 = time(nullptr);
                 while (true)
                 {
-                    bool ok = game.generate(difficulty);
+                    auto const &solutions = game.generate(difficulty);
                     {
                         std::lock_guard locker(output_mutex);
                         auto t1 = time(nullptr);
                         ++n_games_produced;
                         auto dt = t1 > t0 ? t1 - t0 : 1;
-                        std::cout << "# empty cells: " << game.empty_count();
-                        if (!ok)
+                        if (!solutions.empty())
                         {
-                            std::cout << " ... \u001b[31;1mdiscarded.\u001b[0m\n\n";
-                        }
-                        else
-                        {
-                            ++num_found;
-                            std::cout << "\n\n\u001b[32;1mSuccess!\n\n"
-                                      << game
-                                      << "\u001b[0m\n";
-                            std::string filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(difficulty) + ".txt";
-                            if (std::filesystem::exists(filename))
+                            for (auto const &solution : solutions)
                             {
-                                int seq_no = 0;
-                                do
+                                ++num_found;
+                                std::cout << "\n\n\u001b[32;1mSuccess!\n\n";
+                                for (int i = 0; i < 81; i += 9)
                                 {
-                                    filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(difficulty) + " (" + std::to_string(seq_no) + ").txt";
-                                    ++seq_no;
-                                } while (std::filesystem::exists(filename));
+                                    std::cout.write(solution.data() + i, 9);
+                                    std::cout << '\n';
+                                }
+                                std::cout << "\u001b[0m\n";
+                                std::string filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(difficulty) + ".txt";
+                                if (std::filesystem::exists(filename))
+                                {
+                                    int seq_no = 0;
+                                    do
+                                    {
+                                        filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(difficulty) + " (" + std::to_string(seq_no) + ").txt";
+                                        ++seq_no;
+                                    } while (std::filesystem::exists(filename));
+                                }
+                                std::cout << "\u001b[32mSaving to " << filename << " ... \u001b[0m\n\n" << std::flush;
+                                std::ofstream out(filename);
+                                out.write(solution.data(), static_cast<std::streamsize>(solution.size()));
                             }
-                            std::cout << "\u001b[32mSaving to " << filename << " ... \u001b[0m\n\n";
-                            std::cout.flush();
-                            std::ofstream out(filename);
-                            game.dump(out);
-#ifdef WITH_GENERATIONS
-                            for (auto const &generation : game.generations())
-                            {
-                                out << '\n';
-                                out.write(generation.data(), generation.size());
-                            }
-#endif
                         }
                         std::cout << (n_games_produced / dt) << " games/sec\n"
                                   << "games with difficulty " << difficulty << " found so far: " << num_found << "\n\n";

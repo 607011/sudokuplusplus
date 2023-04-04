@@ -49,13 +49,19 @@ public:
     explicit sudoku(std::string const &board_str)
         : sudoku()
     {
-        assert(board.size() == 81);
+        assert(board_.size() == 81);
         for (size_t i = 0; i < 81U; ++i)
         {
-            board[i] = board_str.at(i) == '.'
-                           ? EMPTY
-                           : board_str.at(i);
+            board_[i] = board_str.at(i) == '.'
+                            ? EMPTY
+                            : board_str.at(i);
         }
+    }
+
+    explicit sudoku(board_t const &board)
+        : sudoku()
+    {
+        this->board_ = board;
     }
 
     void init()
@@ -78,7 +84,8 @@ public:
 
     void reset()
     {
-        std::fill(board.begin(), board.end(), EMPTY);
+        std::fill(board_.begin(), board_.end(), EMPTY);
+        solutions_.clear();
         shuffle_guesses();
     }
 
@@ -99,7 +106,7 @@ public:
     {
         for (size_t i = 0; i < 81; ++i)
         {
-            if (board.at(i) == EMPTY)
+            if (board_.at(i) == EMPTY)
             {
                 row = i / 9;
                 col = i % 9;
@@ -166,19 +173,17 @@ public:
         bool some_free = find_free_cell(row, col);
         if (!some_free)
         {
+            solutions_.push_back(board_);
             return true;
         }
-        for (size_t i = 0; i < 9; ++i)
+        for (int i = 0; i < 9; ++i)
         {
             if (is_safe(row, col, guess_num[i]))
             {
                 set(row, col, guess_num[i]);
-                if (solve())
-                {
-                    return true;
-                }
+                solve();
+                set(row, col, EMPTY); // backtrack
             }
-            set(row, col, EMPTY); // backtrack
         }
         return false;
     }
@@ -190,7 +195,7 @@ public:
      */
     inline void dump(std::ostream &os) const
     {
-        os.write(board.data(), static_cast<std::streamsize>(board.size()));
+        os.write(board_.data(), static_cast<std::streamsize>(board_.size()));
     }
 
     /**
@@ -200,7 +205,7 @@ public:
      */
     inline int empty_count() const
     {
-        return static_cast<int>(std::count(board.begin(), board.end(), EMPTY));
+        return static_cast<int>(std::count(board_.begin(), board_.end(), EMPTY));
     }
 
     /**
@@ -227,29 +232,19 @@ public:
         return it->description;
     }
 
-#ifdef WITH_GENERATIONS
-    std::vector<std::array<char, 81>> const &generations() const
-    {
-        return evolution;
-    }
-#endif
-
     /**
      * @brief Generate Sudoku with "diagonal" algorithm.
      *
      * This function generates a valid Sudoku by randomly filling three diagonal 3x3 boxes.
-     * After solving the Sudoku each non-empty cell is checked, if it can be cleared and the Sudoku still has exactly one solution.
+     * After solving the Sudoku each non-empty cell is checked if it can be cleared and the Sudoku still has exactly one solution.
      * If no unchecked non-empty cell is left or the desired amount of empty cells is reached, the function returns.
      *
      * @param difficulty 25..64 where 64 is crazy hard
      * @return true if Sudoku contains the desired amount of empty cells
      * @return false otherwise
      */
-    bool generate(const int difficulty)
+    std::vector<board_t> generate(const int difficulty)
     {
-#ifdef WITH_GENERATIONS
-        evolution.clear();
-#endif
         for (size_t i = 0; i < 9; i += 3)
         {
             size_t num_idx = 0;
@@ -263,31 +258,65 @@ public:
             }
         }
         solve();
-        std::cout << "Trying ..." << std::endl
-                  << *this << std::endl;
-        // visit cells in random order until all are visited
-        // or the desired amount of empty cells is reached
-        int empty_cells = difficulty;
-        size_t visited_idx = unvisited.size();
-        std::shuffle(unvisited.begin(), unvisited.end(), rng);
-        while (empty_cells > 0 && visited_idx-- > 0)
+        std::cout << "\n# solutions: " << solutions_.size() << '\n';
+        std::vector<sudoku::board_t> solutions;
+        for (auto const &board : solutions_)
         {
-            size_t const pos = unvisited.at(visited_idx);
-            char const copy = board.at(pos);
-            board[pos] = EMPTY;
-            if (solution_count() == 1)
+            sudoku solution(board);
+            std::cout << "Trying ...\n"
+                      << solution << std::endl;
+            // visit cells in random order until all are visited
+            // or the desired amount of empty cells is reached
+            int empty_cells = difficulty;
+            size_t visited_idx = unvisited.size();
+            std::shuffle(unvisited.begin(), unvisited.end(), rng);
+            while (empty_cells > 0 && visited_idx-- > 0)
             {
-                --empty_cells;
-#ifdef WITH_GENERATIONS
-                evolution.push_back(board);
-#endif
+                size_t const pos = unvisited.at(visited_idx);
+                char const copy = board.at(pos);
+                solution[pos] = EMPTY;
+                if (solution.solution_count() == 1)
+                {
+                    --empty_cells;
+                }
+                else
+                {
+                    solution[pos] = copy;
+                }
+            }
+            if (empty_cells == 0)
+            {
+                solutions.push_back(solution.board());
+                std::cout << "\u001b[32;1mYippieh!\n\n"
+                          << solution << "\u001b[0m\n";
             }
             else
             {
-                board[pos] = copy;
+                std::cout << empty_cells << " cells above limit."
+                          << " \u001b[31;1mDiscarded.\u001b[0m\n\n";
             }
         }
-        return empty_cells == 0;
+        return solutions;
+    }
+
+    std::vector<board_t> const &solutions() const
+    {
+        return solutions_;
+    }
+
+    inline void set(size_t idx, char value)
+    {
+        board_[idx] = value;
+    }
+
+    inline char &operator[](size_t idx)
+    {
+        return board_[idx];
+    }
+
+    inline board_t const &board() const
+    {
+        return board_;
     }
 
     friend std::ostream &operator<<(std::ostream &os, const sudoku &game);
@@ -295,15 +324,11 @@ public:
 private:
     static constexpr char EMPTY = '0';
 
-#ifdef WITH_GENERATIONS
-    std::vector<board_t> evolution;
-#endif
-
     /**
      * @brief Holds the Sudoku cells in a flattened array.
      *
      */
-    board_t board;
+    board_t board_;
 
     std::vector<board_t> solutions_;
 
@@ -339,7 +364,7 @@ private:
      */
     inline void set(size_t row, size_t col, char num)
     {
-        board[row * 9 + col] = num;
+        board_[row * 9 + col] = num;
     }
 
     /**
@@ -351,7 +376,7 @@ private:
      */
     inline char get(size_t row, size_t col) const
     {
-        return board.at(row * 9 + col);
+        return board_.at(row * 9 + col);
     }
 
     /**
@@ -372,11 +397,11 @@ private:
         size_t col_idx = col;
         for (size_t row_idx = row * 9; row_idx < row * 9 + 9; ++row_idx)
         {
-            if (board.at(row_idx) == num)
+            if (board_.at(row_idx) == num)
             {
                 return false;
             }
-            if (board.at(col_idx) == num)
+            if (board_.at(col_idx) == num)
             {
                 return false;
             }

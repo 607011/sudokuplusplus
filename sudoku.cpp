@@ -28,7 +28,7 @@ std::ostream &operator<<(std::ostream &os, const sudoku &game)
 {
     for (int i = 0; i < 81; i += 9)
     {
-        os.write(game.board.data() + i, 9);
+        os.write(game.board_.data() + i, 9);
         os << '\n';
     }
     return os;

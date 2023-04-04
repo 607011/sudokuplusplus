@@ -70,8 +70,8 @@ int solve()
 
 int generate(int difficulty, unsigned int thread_count)
 {
-    std::cout << "Generating games with difficulty " << difficulty << " in " << thread_count << " thread(s) ..." << std::endl;
-    std::cout << "(Press Ctrl+C to break.)" << std::endl;
+    std::cout << "Generating games with difficulty " << difficulty << " in " << thread_count << " thread" << (thread_count == 1 ? "" : "s") << " ...\n"
+              << "(Press Ctrl+C to break.)" << std::endl;
 
     std::vector<std::thread> threads;
     std::mutex output_mutex;
@@ -93,21 +93,17 @@ int generate(int difficulty, unsigned int thread_count)
                         auto t1 = time(nullptr);
                         ++n_games_produced;
                         auto dt = t1 > t0 ? t1 - t0 : 1;
-                        std::cout << (n_games_produced / dt) << " games/sec" << std::endl;
+                        std::cout << (n_games_produced / dt) << " games/sec\n";
                         std::cout << "# empty cells: " << game.empty_count();
                         if (!ok)
                         {
-                            std::cout << " ... \u001b[31;1mdiscarded.\u001b[0m" << std::endl
-                                      << std::endl;
+                            std::cout << " ... \u001b[31;1mdiscarded.\u001b[0m\n\n";
                         }
                         else
                         {
-                            std::cout << std::endl
-                                      << std::endl
-                                      << "\u001b[32;1mSuccess!" << std::endl
-                                      << std::endl
+                            std::cout << "\n\n\u001b[32;1mSuccess!\n\n"
                                       << game
-                                      << "\u001b[0m" << std::endl;
+                                      << "\u001b[0m\n";
                             std::string filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(difficulty) + ".txt";
                             if (std::filesystem::exists(filename))
                             {
@@ -118,14 +114,14 @@ int generate(int difficulty, unsigned int thread_count)
                                     ++seq_no;
                                 } while (std::filesystem::exists(filename));
                             }
-                            std::cout << "\u001b[32mSaving to " << filename << " ... \u001b[0m" << std::endl
-                                      << std::endl;
+                            std::cout << "\u001b[32mSaving to " << filename << " ... \u001b[0m\n\n";
+                            std::cout.flush();
                             std::ofstream out(filename);
                             game.dump(out);
 #ifdef WITH_GENERATIONS
                             for (auto const &generation : game.generations())
                             {
-                                out << std::endl;
+                                out << '\n';
                                 out.write(generation.data(), generation.size());
                             }
 #endif

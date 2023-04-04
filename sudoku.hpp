@@ -38,6 +38,8 @@
 class sudoku
 {
 public:
+    typedef std::array<char, 81> board_t;
+
     sudoku()
     {
         init();
@@ -294,14 +296,16 @@ private:
     static constexpr char EMPTY = '0';
 
 #ifdef WITH_GENERATIONS
-    std::vector<std::array<char, 81>> evolution;
+    std::vector<board_t> evolution;
 #endif
 
     /**
      * @brief Holds the Sudoku cells in a flattened array.
      *
      */
-    std::array<char, 81> board;
+    board_t board;
+
+    std::vector<board_t> solutions_;
 
     /**
      * @brief Helper array with shuffled digits from 1 to 9

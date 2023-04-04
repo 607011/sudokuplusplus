@@ -66,19 +66,19 @@ public:
 
     void init()
     {
-        rng.seed(static_cast<uint32_t>(util::make_seed()));
+        rng_.seed(static_cast<uint32_t>(util::make_seed()));
         // warmup RNG
         for (int i = 0; i < 10'000; ++i)
         {
-            (void)rng();
+            (void)rng_();
         }
         for (size_t i = 0; i < 9; ++i)
         {
-            guess_num[i] = static_cast<char>(i + '1');
+            guess_num_[i] = static_cast<char>(i + '1');
         }
         for (size_t i = 0; i < 81; ++i)
         {
-            unvisited[i] = i;
+            unvisited_[i] = i;
         }
     }
 
@@ -91,7 +91,7 @@ public:
 
     inline void shuffle_guesses()
     {
-        std::shuffle(guess_num.begin(), guess_num.end(), rng);
+        std::shuffle(guess_num_.begin(), guess_num_.end(), rng_);
     }
 
     /**
@@ -138,9 +138,9 @@ public:
             {
                 break;
             }
-            if (is_safe(row, col, guess_num[i]))
+            if (is_safe(row, col, guess_num_[i]))
             {
-                set(row, col, guess_num[i]);
+                set(row, col, guess_num_[i]);
                 count_solutions(n);
             }
             set(row, col, EMPTY); // backtrack
@@ -178,9 +178,9 @@ public:
         }
         for (int i = 0; i < 9; ++i)
         {
-            if (is_safe(row, col, guess_num[i]))
+            if (is_safe(row, col, guess_num_[i]))
             {
-                set(row, col, guess_num[i]);
+                set(row, col, guess_num_[i]);
                 solve();
                 set(row, col, EMPTY); // backtrack
             }
@@ -253,13 +253,13 @@ public:
             {
                 for (size_t col = 0; col < 3; ++col)
                 {
-                    set(row + i, col + i, guess_num[num_idx++]);
+                    set(row + i, col + i, guess_num_[num_idx++]);
                 }
             }
         }
         solve();
         std::cout << "\n# solutions: " << solutions_.size() << '\n';
-        std::vector<sudoku::board_t> solutions;
+        std::vector<sudoku::board_t> actual_solutions;
         for (auto const &board : solutions_)
         {
             sudoku solution(board);
@@ -268,12 +268,12 @@ public:
             // visit cells in random order until all are visited
             // or the desired amount of empty cells is reached
             int empty_cells = difficulty;
-            size_t visited_idx = unvisited.size();
-            std::shuffle(unvisited.begin(), unvisited.end(), rng);
+            size_t visited_idx = unvisited_.size();
+            std::shuffle(unvisited_.begin(), unvisited_.end(), rng_);
             while (empty_cells > 0 && visited_idx-- > 0)
             {
-                size_t const pos = unvisited.at(visited_idx);
-                char const copy = board.at(pos);
+                size_t const pos = unvisited_.at(visited_idx);
+                char const cell_copy = board.at(pos);
                 solution[pos] = EMPTY;
                 if (solution.solution_count() == 1)
                 {
@@ -281,12 +281,12 @@ public:
                 }
                 else
                 {
-                    solution[pos] = copy;
+                    solution[pos] = cell_copy;
                 }
             }
             if (empty_cells == 0)
             {
-                solutions.push_back(solution.board());
+                actual_solutions.push_back(solution.board());
                 std::cout << "\u001b[32;1mYippieh!\n\n"
                           << solution << "\u001b[0m\n";
             }
@@ -296,7 +296,7 @@ public:
                           << " \u001b[31;1mDiscarded.\u001b[0m\n\n";
             }
         }
-        return solutions;
+        return actual_solutions;
     }
 
     std::vector<board_t> const &solutions() const
@@ -336,7 +336,7 @@ private:
      * @brief Helper array with shuffled digits from 1 to 9
      *
      */
-    std::array<char, 9> guess_num;
+    std::array<char, 9> guess_num_;
 
     /**
      * @brief Random number generator for a couple of uses.
@@ -348,12 +348,12 @@ private:
      * and robustness against statistical tests.
      * TODO: Exchange MT19937 for SFMT (http://www.math.sci.hiroshima-u.ac.jp/m-mat/MT/SFMT/)
      */
-    std::mt19937 rng;
+    std::mt19937 rng_;
 
     /**
      * @brief List of unvisited cells used in `generate()`.
      */
-    std::array<size_t, 81> unvisited;
+    std::array<size_t, 81> unvisited_;
 
     /**
      * @brief Set the contents of a certain cell.

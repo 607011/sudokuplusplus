@@ -70,16 +70,19 @@ int solve()
 
 int generate(int difficulty, unsigned int thread_count)
 {
-    std::cout << "Generating games with difficulty " << difficulty << " in " << thread_count << " thread" << (thread_count == 1 ? "" : "s") << " ...\n"
+    std::cout << "Generating games with difficulty " << difficulty
+              << " in " << thread_count << " thread" << (thread_count == 1 ? "" : "s")
+              << " ...\n"
               << "(Press Ctrl+C to break.)" << std::endl;
 
     std::vector<std::thread> threads;
     std::mutex output_mutex;
     long n_games_produced = 0;
-    for (auto _i = 0; _i < thread_count; ++_i)
+    long num_found = 0;
+    for (auto i = 0U; i < thread_count; ++i)
     {
         threads.emplace_back(
-            [difficulty, &output_mutex, &n_games_produced]()
+            [difficulty, &num_found, &output_mutex, &n_games_produced]()
             {
                 output_mutex.lock();
                 sudoku game;
@@ -93,7 +96,6 @@ int generate(int difficulty, unsigned int thread_count)
                         auto t1 = time(nullptr);
                         ++n_games_produced;
                         auto dt = t1 > t0 ? t1 - t0 : 1;
-                        std::cout << (n_games_produced / dt) << " games/sec\n";
                         std::cout << "# empty cells: " << game.empty_count();
                         if (!ok)
                         {
@@ -101,6 +103,7 @@ int generate(int difficulty, unsigned int thread_count)
                         }
                         else
                         {
+                            ++num_found;
                             std::cout << "\n\n\u001b[32;1mSuccess!\n\n"
                                       << game
                                       << "\u001b[0m\n";
@@ -126,6 +129,8 @@ int generate(int difficulty, unsigned int thread_count)
                             }
 #endif
                         }
+                        std::cout << (n_games_produced / dt) << " games/sec\n"
+                                  << "games with difficulty " << difficulty << " found so far: " << num_found << "\n\n";
                     }
                     game.reset();
                 }

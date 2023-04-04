@@ -26,3 +26,8 @@ sudoku2svg.dir/
 sudoku2svg.vcxproj
 sudoku2svg.vcxproj.filters
 x64/
+
+.ninja_deps
+.ninja_log
+__attic/
+build.ninja

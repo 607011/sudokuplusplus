@@ -148,8 +148,11 @@ int main(int argc, char *argv[])
         rewind(stdin);
         return solve();
     }
-    int difficulty = argc == 2
+    int difficulty = argc > 1
                          ? std::max(25, std::min(64, std::atoi(argv[1])))
                          : 50;
-    return generate(difficulty, static_cast<int>(std::thread::hardware_concurrency()));
+    unsigned int thread_count = argc > 2
+                                    ? static_cast<unsigned int>(std::atoi(argv[2]))
+                                    : std::thread::hardware_concurrency();
+    return generate(difficulty, thread_count);
 }

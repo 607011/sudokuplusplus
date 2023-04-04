@@ -10,10 +10,11 @@ cmake --build .
 ## Generate sudokus
 
 ```
-./sudoku [difficulty]
+./sudoku [difficulty] [thread_count]
 ```
 
 where `difficulty` is an integer number between 25 and 64, meaning fields left empty. 64 is hardest possible.
+`thread_count` determines the number of games being generated concurrently. If not given, the number of cores will be used.
 
 Each Sudoku found will be written to a text file named like sudoku-[ISO8601DateTime]-[difficulty] [seq_no].txt with a contents like (`0` denotes an empty field):
 

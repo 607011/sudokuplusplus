@@ -10,6 +10,8 @@
 
 #include "util.hpp"
 
+#include <random>
+
 unsigned long util::make_seed()
 {
     auto a = static_cast<unsigned long>(time(nullptr));
@@ -46,5 +48,6 @@ unsigned long util::make_seed()
     c = c - a;
     c = c - b;
     c = c ^ (b >> 15);
-    return c;
+    std::random_device detrng;
+    return c + detrng();
 }

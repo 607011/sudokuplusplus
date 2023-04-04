@@ -28,6 +28,8 @@
 #include <string>
 #include <cstdio>
 #include <utility>
+#include <thread>
+#include <mutex>
 
 #include "sudoku.hpp"
 
@@ -66,58 +68,79 @@ int solve()
     return EXIT_SUCCESS;
 }
 
-int generate(int difficulty)
+int generate(int difficulty, unsigned int thread_count)
 {
-    std::cout << "Generating games with difficulty " << difficulty << " ..." << std::endl;
+    std::cout << "Generating games with difficulty " << difficulty << " in " << thread_count << " thread(s) ..." << std::endl;
     std::cout << "(Press Ctrl+C to break.)" << std::endl;
-    sudoku game;
+
+    std::vector<std::thread> threads;
+    std::mutex output_mutex;
     long n_games_produced = 0;
-    auto t0 = time(nullptr);
-    while (true)
+    for (auto _i = 0; _i < thread_count; ++_i)
     {
-        bool ok = game.generate(difficulty);
-        auto t1 = time(nullptr);
-        ++n_games_produced;
-        auto dt = t1 > t0 ? t1 - t0 : 1;
-        std::cout << (n_games_produced / dt) << " games/sec" << std::endl;
-        std::cout << "# empty cells: " << game.empty_count();
-        if (!ok)
-        {
-            std::cout << " ... \u001b[31;1mdiscarded.\u001b[0m" << std::endl
-                      << std::endl;
-        }
-        else
-        {
-            std::cout << std::endl
-                      << std::endl
-                      << "\u001b[32;1mSuccess!" << std::endl
-                      << std::endl
-                      << game
-                      << "\u001b[0m" << std::endl;
-            std::string filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(difficulty) + ".txt";
-            if (std::filesystem::exists(filename))
+        threads.emplace_back(
+            [difficulty, &output_mutex, &n_games_produced]()
             {
-                int seq_no = 0;
-                do
+                output_mutex.lock();
+                sudoku game;
+                output_mutex.unlock();
+                auto t0 = time(nullptr);
+                while (true)
                 {
-                    filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(difficulty) + " (" + std::to_string(seq_no) + ").txt";
-                    ++seq_no;
-                } while (std::filesystem::exists(filename));
-            }
-            std::cout << "\u001b[32mSaving to " << filename << " ... \u001b[0m" << std::endl
-                      << std::endl;
-            std::ofstream out(filename);
-            game.dump(out);
+                    bool ok = game.generate(difficulty);
+                    {
+                        std::lock_guard locker(output_mutex);
+                        auto t1 = time(nullptr);
+                        ++n_games_produced;
+                        auto dt = t1 > t0 ? t1 - t0 : 1;
+                        std::cout << (n_games_produced / dt) << " games/sec" << std::endl;
+                        std::cout << "# empty cells: " << game.empty_count();
+                        if (!ok)
+                        {
+                            std::cout << " ... \u001b[31;1mdiscarded.\u001b[0m" << std::endl
+                                      << std::endl;
+                        }
+                        else
+                        {
+                            std::cout << std::endl
+                                      << std::endl
+                                      << "\u001b[32;1mSuccess!" << std::endl
+                                      << std::endl
+                                      << game
+                                      << "\u001b[0m" << std::endl;
+                            std::string filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(difficulty) + ".txt";
+                            if (std::filesystem::exists(filename))
+                            {
+                                int seq_no = 0;
+                                do
+                                {
+                                    filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(difficulty) + " (" + std::to_string(seq_no) + ").txt";
+                                    ++seq_no;
+                                } while (std::filesystem::exists(filename));
+                            }
+                            std::cout << "\u001b[32mSaving to " << filename << " ... \u001b[0m" << std::endl
+                                      << std::endl;
+                            std::ofstream out(filename);
+                            game.dump(out);
 #ifdef WITH_GENERATIONS
-            for (auto const &generation : game.generations())
-            {
-                out << std::endl;
-                out.write(generation.data(), generation.size());
-            }
+                            for (auto const &generation : game.generations())
+                            {
+                                out << std::endl;
+                                out.write(generation.data(), generation.size());
+                            }
 #endif
-        }
-        game.reset();
+                        }
+                    }
+                    game.reset();
+                }
+            });
     }
+
+    for (auto &thread : threads)
+    {
+        thread.join();
+    }
+
     return EXIT_SUCCESS;
 }
 
@@ -132,5 +155,5 @@ int main(int argc, char *argv[])
     int difficulty = argc == 2
                          ? std::max(25, std::min(64, std::atoi(argv[1])))
                          : 50;
-    return generate(difficulty);
+    return generate(difficulty, static_cast<int>(std::thread::hardware_concurrency()));
 }

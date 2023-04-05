@@ -49,7 +49,7 @@ public:
     explicit sudoku(std::string const &board_str)
         : sudoku()
     {
-        assert(board_.size() == 81);
+        assert(board_.size() == 81U);
         for (size_t i = 0; i < 81U; ++i)
         {
             board_[i] = board_str.at(i) == '.'
@@ -72,11 +72,11 @@ public:
         {
             (void)rng_();
         }
-        for (size_t i = 0; i < 9; ++i)
+        for (size_t i = 0; i < 9U; ++i)
         {
             guess_num_[i] = static_cast<char>(i + '1');
         }
-        for (size_t i = 0; i < 81; ++i)
+        for (size_t i = 0; i < 81U; ++i)
         {
             unvisited_[i] = i;
         }

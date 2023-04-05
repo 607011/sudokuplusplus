@@ -194,6 +194,41 @@ public:
         return count_solutions_limited(n);
     }
 
+    void random_fill()
+    {
+        std::array<unsigned char, 81> unvisited;
+        for (unsigned int i = 0; i < 81; ++i)
+        {
+            unvisited[i] = i;
+        }
+        while (true)
+        {
+            std::shuffle(unvisited.begin(), unvisited.end(), rng_);
+            for (unsigned int i = 0; i < 81; ++i)
+            {
+                std::cout << '.' << std::flush;
+                auto idx = unvisited.at(i);
+                shuffle_guesses();
+                for (char num : guess_num_)
+                {
+                    if (is_safe(idx, num))
+                    {
+                        set(idx, num);
+                        if (i >= 17 && has_one_clear_solution())
+                        {
+                            std::cout << "Solving ..." << std::flush;
+                            solve();
+                            return;
+                        }
+                        set(idx, EMPTY);
+                    }
+                    std::cout << num << std::flush;
+                }
+            }
+            std::cout << "**RETRY**" << std::flush;
+        }
+    }
+
     /**
      * @brief Solve Sudoku.
      *
@@ -269,8 +304,8 @@ public:
 
     /**
      * @brief Get all calculated solutions of this Sudoku game.
-     * 
-     * @return std::vector<board_t> const& 
+     *
+     * @return std::vector<board_t> const&
      */
     std::vector<board_t> const &solved_boards() const
     {
@@ -279,7 +314,7 @@ public:
 
     /**
      * @brief Place a digit on the flattened board at the specified index.
-     * 
+     *
      * @param idx The index to place the digit at
      * @param value The digit to place
      */
@@ -290,7 +325,7 @@ public:
 
     /**
      * @brief Get the value at the specified index.
-     * 
+     *
      * @param idx
      * @param value
      */
@@ -298,11 +333,22 @@ public:
     {
         return board_[idx];
     }
-    
+
+    /**
+     * @brief Get the value at the specified index.
+     *
+     * @param idx
+     * @param value
+     */
+    inline char at(unsigned int idx) const
+    {
+        return board_[idx];
+    }
+
     /**
      * @brief Get the flattened board.
-     * 
-     * @return board_t const& 
+     *
+     * @return board_t const&
      */
     inline board_t const &board() const
     {
@@ -311,8 +357,8 @@ public:
 
     /**
      * @brief Get the Mersenne-Twister based random number generator `sudoku` uses internally.
-     * 
-     * @return std::mt19937& 
+     *
+     * @return std::mt19937&
      */
     inline std::mt19937 &rng()
     {
@@ -387,11 +433,18 @@ public:
         return true;
     }
 
+    inline bool is_safe(unsigned int idx, char num) const
+    {
+        unsigned int row = idx / 9;
+        unsigned int col = idx % 9;
+        return is_safe(row, col, num);
+    }
+
     friend std::ostream &operator<<(std::ostream &os, const sudoku &game);
 
     /**
      * @brief Value of an empty field
-     * 
+     *
      */
     static constexpr char EMPTY = '0';
 
@@ -404,7 +457,7 @@ private:
 
     /**
      * @brief Holds all solutions to the current game.
-     * 
+     *
      */
     std::vector<board_t> solved_boards_;
 

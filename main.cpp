@@ -68,7 +68,6 @@ int solve()
     return EXIT_SUCCESS;
 }
 
-
 int generate(int difficulty, unsigned int thread_count)
 {
     std::cout << "Generating games with difficulty " << difficulty
@@ -80,6 +79,10 @@ int generate(int difficulty, unsigned int thread_count)
     std::mutex output_mutex;
     long long n_games_produced = 0;
     long long n_games_valid = 0;
+    static const std::array<uint8_t, 27> DIAGONAL3X3{
+        0, 1, 2, 9, 10, 11, 18, 19, 20,
+        30, 31, 32, 39, 40, 41, 48, 49, 50,
+        60, 61, 62, 69, 70, 71, 78, 79, 80};
     for (auto i = 0U; i < thread_count; ++i)
     {
         threads.emplace_back(
@@ -88,31 +91,29 @@ int generate(int difficulty, unsigned int thread_count)
                 output_mutex.lock();
                 sudoku game;
                 output_mutex.unlock();
-                std::array<size_t, 81> unvisited;
-                for (size_t i = 0; i < 81U; ++i)
+                std::array<unsigned int, 81U> unvisited;
+                for (unsigned int i = 0; i < 81U; ++i)
                 {
                     unvisited[i] = i;
                 }
                 auto t0 = std::chrono::high_resolution_clock().now();
                 while (true)
                 {
-                    // populate diagonal 3x3 blocks
-                    for (size_t i = 0; i < 9; i += 3)
+                    // populate board
+                    unsigned int num_idx = 0;
+                    for (auto board_idx : DIAGONAL3X3)
                     {
-                        size_t num_idx = 0;
-                        game.shuffle_guesses();
-                        for (size_t row = 0; row < 3; ++row)
+                        game[board_idx] = game.guess_num(num_idx);
+                        if (++num_idx == 9)
                         {
-                            for (size_t col = 0; col < 3; ++col)
-                            {
-                                game.set(row + i, col + i, game.guess_num(num_idx++));
-                            }
+                            num_idx = 0;
+                            game.shuffle_guesses();
                         }
                     }
                     // generate all solutions
                     game.solve();
-                    std::cout << "\n# solutions: " << game.solved_boards().size() << std::endl;
-                    for (auto const &board : game.solved_boards())
+                    std::cout << "# solutions: " << game.solved_boards().size() << "\n\n";
+                    for (sudoku::board_t const &board : game.solved_boards())
                     {
                         sudoku possible_solution(board);
                         std::cout << "Trying ...\n"
@@ -120,11 +121,11 @@ int generate(int difficulty, unsigned int thread_count)
                         // visit cells in random order until all are visited
                         // or the desired amount of empty cells is reached
                         int empty_cells = difficulty;
-                        size_t visited_idx = unvisited.size();
+                        unsigned int visited_idx = unvisited.size();
                         std::shuffle(unvisited.begin(), unvisited.end(), game.rng());
                         while (empty_cells > 0 && visited_idx-- > 0)
                         {
-                            size_t const pos = unvisited.at(visited_idx);
+                            unsigned int const pos = unvisited.at(visited_idx);
                             char const cell_copy = board.at(pos);
                             possible_solution[pos] = sudoku::EMPTY;
                             if (possible_solution.has_one_clear_solution())

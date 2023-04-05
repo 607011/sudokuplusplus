@@ -50,7 +50,7 @@ public:
         : sudoku()
     {
         assert(board_.size() == 81U);
-        for (size_t i = 0; i < 81U; ++i)
+        for (unsigned int i = 0; i < 81U; ++i)
         {
             board_[i] = board_str.at(i) == '.'
                             ? EMPTY
@@ -72,7 +72,7 @@ public:
         {
             (void)rng_();
         }
-        for (size_t i = 0; i < 9U; ++i)
+        for (unsigned int i = 0; i < 9U; ++i)
         {
             guess_num_[i] = static_cast<char>(i + '1');
         }
@@ -90,7 +90,7 @@ public:
         std::shuffle(guess_num_.begin(), guess_num_.end(), rng_);
     }
 
-    inline char const &guess_num(size_t idx) const
+    inline char const &guess_num(unsigned int idx) const
     {
         return guess_num_.at(idx);
     }
@@ -103,9 +103,9 @@ public:
      * @return true if an empty cell could be found
      * @return false otherwise
      */
-    bool find_free_cell(size_t &row, size_t &col)
+    bool find_free_cell(unsigned int &row, unsigned int &col)
     {
-        for (size_t i = 0; i < 81; ++i)
+        for (unsigned int i = 0; i < 81; ++i)
         {
             if (board_.at(i) == EMPTY)
             {
@@ -126,14 +126,14 @@ public:
      */
     void count_solutions(int &n)
     {
-        size_t row, col;
+        unsigned int row, col;
         bool some_free = find_free_cell(row, col);
         if (!some_free)
         {
             ++n;
             return;
         }
-        for (size_t i = 0; i < 9; ++i)
+        for (unsigned int i = 0; i < 9; ++i)
         {
             if (is_safe(row, col, guess_num_[i]))
             {
@@ -165,13 +165,13 @@ public:
      */
     bool count_solutions_limited(int &n)
     {
-        size_t row, col;
+        unsigned int row, col;
         bool some_free = find_free_cell(row, col);
         if (!some_free)
         {
             return ++n > 1;
         }
-        for (size_t i = 0; i < 9; ++i)
+        for (unsigned int i = 0; i < 9; ++i)
         {
             if (is_safe(row, col, guess_num_[i]))
             {
@@ -204,14 +204,14 @@ public:
      */
     bool solve()
     {
-        size_t row, col;
+        unsigned int row, col;
         bool some_free = find_free_cell(row, col);
         if (!some_free)
         {
             solved_boards_.push_back(board_);
             return true;
         }
-        for (int i = 0; i < 9; ++i)
+        for (unsigned int i = 0; i < 9; ++i)
         {
             if (is_safe(row, col, guess_num_[i]))
             {
@@ -283,7 +283,7 @@ public:
      * @param idx The index to place the digit at
      * @param value The digit to place
      */
-    inline void set(size_t idx, char value)
+    inline void set(unsigned int idx, char value)
     {
         board_[idx] = value;
     }
@@ -294,7 +294,7 @@ public:
      * @param idx
      * @param value
      */
-    inline char &operator[](size_t idx)
+    inline char &operator[](unsigned int idx)
     {
         return board_[idx];
     }
@@ -326,7 +326,7 @@ public:
      * @param col the cell's column
      * @param num the cell's new value
      */
-    inline void set(size_t row, size_t col, char num)
+    inline void set(unsigned int row, unsigned int col, char num)
     {
         board_[row * 9 + col] = num;
     }
@@ -338,7 +338,7 @@ public:
      * @param col the cell's column
      * @return char cell contents
      */
-    inline char get(size_t row, size_t col) const
+    inline char get(unsigned int row, unsigned int col) const
     {
         return board_.at(row * 9 + col);
     }
@@ -355,11 +355,11 @@ public:
      * @return true if safe
      * @return false otherwise
      */
-    bool is_safe(size_t row, size_t col, char num) const
+    bool is_safe(unsigned int row, unsigned int col, char num) const
     {
         // check row and column
-        size_t col_idx = col;
-        for (size_t row_idx = row * 9; row_idx < row * 9 + 9; ++row_idx)
+        unsigned int col_idx = col;
+        for (unsigned int row_idx = row * 9; row_idx < row * 9 + 9; ++row_idx)
         {
             if (board_.at(row_idx) == num)
             {
@@ -374,9 +374,9 @@ public:
         // check 3x3 box
         row -= row % 3;
         col -= col % 3;
-        for (size_t i = row; i < row + 3; ++i)
+        for (unsigned int i = row; i < row + 3; ++i)
         {
-            for (size_t j = col; j < col + 3; ++j)
+            for (unsigned int j = col; j < col + 3; ++j)
             {
                 if (get(i, j) == num)
                 {

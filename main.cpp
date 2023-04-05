@@ -30,6 +30,7 @@
 #include <utility>
 #include <thread>
 #include <mutex>
+#include <chrono>
 
 #include "sudoku.hpp"
 
@@ -60,7 +61,7 @@ int solve()
     std::string level = game.level();
     std::cout << game << std::endl;
     game.solve();
-    std::cout << "number of solutions: " << game.solution_count() << " (" << game.solutions().size() << ")\n"
+    std::cout << "number of solutions: " << game.solution_count() << " (" << game.solved_boards().size() << ")\n"
               << "level of difficulty: " << level << " (" << empty_count << " of 64)"
               << "\n\n"
               << game
@@ -77,34 +78,71 @@ int generate(int difficulty, unsigned int thread_count)
 
     std::vector<std::thread> threads;
     std::mutex output_mutex;
-    long n_games_produced = 0;
-    long num_found = 0;
+    long long n_games_produced = 0;
     for (auto i = 0U; i < thread_count; ++i)
     {
         threads.emplace_back(
-            [difficulty, &num_found, &output_mutex, &n_games_produced]()
+            [difficulty, &output_mutex, &n_games_produced]()
             {
                 output_mutex.lock();
                 sudoku game;
                 output_mutex.unlock();
-                auto t0 = time(nullptr);
+                std::array<size_t, 81> unvisited;
+                for (size_t i = 0; i < 81U; ++i)
+                {
+                    unvisited[i] = i;
+                }
+                auto t0 = std::chrono::high_resolution_clock().now();
                 while (true)
                 {
-                    auto const &solutions = game.generate(difficulty);
+                    // populate diagonal 3x3 blocks
+                    for (size_t i = 0; i < 9; i += 3)
                     {
-                        std::lock_guard locker(output_mutex);
-                        auto t1 = time(nullptr);
-                        ++n_games_produced;
-                        auto dt = t1 > t0 ? t1 - t0 : 1;
-                        if (!solutions.empty())
+                        size_t num_idx = 0;
+                        game.shuffle_guesses();
+                        for (size_t row = 0; row < 3; ++row)
                         {
-                            for (auto const &solution : solutions)
+                            for (size_t col = 0; col < 3; ++col)
                             {
-                                ++num_found;
+                                game.set(row + i, col + i, game.guess_num(num_idx++));
+                            }
+                        }
+                    }
+                    // generate all solutions
+                    game.solve();
+                    std::cout << "\n# solutions: " << game.solved_boards().size() << '\n';
+                    for (auto const &board : game.solved_boards())
+                    {
+                        sudoku possible_solution(board);
+                        std::cout << "Trying ...\n"
+                                  << possible_solution << std::endl;
+                        // visit cells in random order until all are visited
+                        // or the desired amount of empty cells is reached
+                        int empty_cells = difficulty;
+                        size_t visited_idx = unvisited.size();
+                        std::shuffle(unvisited.begin(), unvisited.end(), game.rng());
+                        while (empty_cells > 0 && visited_idx-- > 0)
+                        {
+                            size_t const pos = unvisited.at(visited_idx);
+                            char const cell_copy = board.at(pos);
+                            possible_solution[pos] = sudoku::EMPTY;
+                            if (possible_solution.solution_count() == 1)
+                            {
+                                --empty_cells;
+                            }
+                            else
+                            {
+                                possible_solution[pos] = cell_copy;
+                            }
+                        }
+                        {
+                            std::lock_guard locker(output_mutex);
+                            if (empty_cells == 0)
+                            {
                                 std::cout << "\n\n\u001b[32;1mSuccess!\n\n";
                                 for (int i = 0; i < 81; i += 9)
                                 {
-                                    std::cout.write(solution.data() + i, 9);
+                                    std::cout.write(possible_solution.board().data() + i, 9);
                                     std::cout << '\n';
                                 }
                                 std::cout << "\u001b[0m\n";
@@ -118,13 +156,21 @@ int generate(int difficulty, unsigned int thread_count)
                                         ++seq_no;
                                     } while (std::filesystem::exists(filename));
                                 }
-                                std::cout << "\u001b[32mSaving to " << filename << " ... \u001b[0m\n\n" << std::flush;
+                                std::cout << "\u001b[32mSaving to " << filename << " ... \u001b[0m\n\n"
+                                          << std::flush;
                                 std::ofstream out(filename);
-                                out.write(solution.data(), static_cast<std::streamsize>(solution.size()));
+                                out.write(possible_solution.board().data(), static_cast<std::streamsize>(possible_solution.board().size()));
                             }
+                            else
+                            {
+                                std::cout << empty_cells << " cells above limit."
+                                          << " \u001b[31;1mDiscarded.\u001b[0m\n\n";
+                            }
+                            auto t1 = std::chrono::high_resolution_clock().now();
+                            auto dt = t1 > t0 ? t1 - t0 : std::chrono::duration<uint64_t, std::milli>(1);
+                            ++n_games_produced;
+                            std::cout << (n_games_produced * 1'000'000'000LL / dt.count()) << " games/sec; " << n_games_produced << " games total so far.\n\n";
                         }
-                        std::cout << (n_games_produced / dt) << " games/sec\n"
-                                  << "games with difficulty " << difficulty << " found so far: " << num_found << "\n\n";
                     }
                     game.reset();
                 }

@@ -139,8 +139,8 @@ public:
             {
                 set(row, col, guess_num_[i]);
                 count_solutions(n);
+                set(row, col, EMPTY); // backtrack
             }
-            set(row, col, EMPTY); // backtrack
         }
     }
 
@@ -154,6 +154,44 @@ public:
         int n = 0;
         count_solutions(n);
         return n;
+    }
+
+    /**
+     * @brief Determine if Sudoku has more than one solution.
+     *
+     * This is a recursive function acting as a solver, implemented as a backtracker.
+     *
+     * @param[out] n the number of solutions
+     */
+    bool count_solutions_limited(int &n)
+    {
+        size_t row, col;
+        bool some_free = find_free_cell(row, col);
+        if (!some_free)
+        {
+            return ++n > 1;
+        }
+        for (size_t i = 0; i < 9; ++i)
+        {
+            if (is_safe(row, col, guess_num_[i]))
+            {
+                set(row, col, guess_num_[i]);
+                count_solutions_limited(n);
+                set(row, col, EMPTY); // backtrack
+            }
+        }
+        return n == 1;
+    }
+
+    /**
+     * @brief Check if Sudoku has exactly one solution.
+     *
+     * @return true if Sudoku has one clear solution, false otherwise.
+     */
+    inline bool has_one_clear_solution()
+    {
+        int n = 0;
+        return count_solutions_limited(n);
     }
 
     /**
@@ -388,5 +426,7 @@ private:
      */
     std::mt19937 rng_;
 };
+
+std::ostream &operator<<(std::ostream &, const sudoku::board_t &);
 
 #endif // __SUDOKU_HPP__

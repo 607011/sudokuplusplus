@@ -62,12 +62,12 @@ int solve()
     std::cout << game << std::endl;
     game.solve();
     std::cout << "number of solutions: " << game.solution_count() << " (" << game.solved_boards().size() << ")\n"
-              << "level of difficulty: " << level << " (" << empty_count << " of 64)"
-              << "\n\n"
-              << game
+              << "level of difficulty: " << level << " (" << empty_count << " of 64)\n\n"
+              << game.solved_boards().front()
               << std::endl;
     return EXIT_SUCCESS;
 }
+
 
 int generate(int difficulty, unsigned int thread_count)
 {
@@ -79,10 +79,11 @@ int generate(int difficulty, unsigned int thread_count)
     std::vector<std::thread> threads;
     std::mutex output_mutex;
     long long n_games_produced = 0;
+    long long n_games_valid = 0;
     for (auto i = 0U; i < thread_count; ++i)
     {
         threads.emplace_back(
-            [difficulty, &output_mutex, &n_games_produced]()
+            [difficulty, &output_mutex, &n_games_valid, &n_games_produced]()
             {
                 output_mutex.lock();
                 sudoku game;
@@ -110,7 +111,7 @@ int generate(int difficulty, unsigned int thread_count)
                     }
                     // generate all solutions
                     game.solve();
-                    std::cout << "\n# solutions: " << game.solved_boards().size() << '\n';
+                    std::cout << "\n# solutions: " << game.solved_boards().size() << std::endl;
                     for (auto const &board : game.solved_boards())
                     {
                         sudoku possible_solution(board);
@@ -126,7 +127,7 @@ int generate(int difficulty, unsigned int thread_count)
                             size_t const pos = unvisited.at(visited_idx);
                             char const cell_copy = board.at(pos);
                             possible_solution[pos] = sudoku::EMPTY;
-                            if (possible_solution.solution_count() == 1)
+                            if (possible_solution.has_one_clear_solution())
                             {
                                 --empty_cells;
                             }
@@ -139,6 +140,7 @@ int generate(int difficulty, unsigned int thread_count)
                             std::lock_guard locker(output_mutex);
                             if (empty_cells == 0)
                             {
+                                ++n_games_valid;
                                 std::cout << "\n\n\u001b[32;1mSuccess!\n\n";
                                 for (int i = 0; i < 81; i += 9)
                                 {
@@ -167,9 +169,12 @@ int generate(int difficulty, unsigned int thread_count)
                                           << " \u001b[31;1mDiscarded.\u001b[0m\n\n";
                             }
                             auto t1 = std::chrono::high_resolution_clock().now();
-                            auto dt = t1 > t0 ? t1 - t0 : std::chrono::duration<uint64_t, std::milli>(1);
+                            auto dt = t1 > t0 ? t1 - t0 : std::chrono::duration<float, std::milli>(1);
                             ++n_games_produced;
-                            std::cout << (n_games_produced * 1'000'000'000LL / dt.count()) << " games/sec; " << n_games_produced << " games total so far.\n\n";
+                            std::cout << std::setprecision(3) << (n_games_produced * 1e3f / dt.count()) << " games/sec; "
+                                      << n_games_produced << " games total so far; "
+                                      << n_games_valid << " with specified difficulty (" << difficulty << ").\n"
+                                      << std::endl;
                         }
                     }
                     game.reset();

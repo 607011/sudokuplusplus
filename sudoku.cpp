@@ -24,12 +24,18 @@
 
 #include "sudoku.hpp"
 
-std::ostream &operator<<(std::ostream &os, const sudoku &game)
+std::ostream &operator<<(std::ostream &os, const sudoku::board_t &board)
 {
     for (int i = 0; i < 81; i += 9)
     {
-        os.write(game.board_.data() + i, 9);
+        os.write(board.data() + i, 9);
         os << '\n';
     }
+    return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const sudoku &game)
+{
+    os << game.board_;
     return os;
 }

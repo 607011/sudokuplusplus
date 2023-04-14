@@ -194,10 +194,11 @@ public:
         return count_solutions_limited(n);
     }
 
+    /** WIP */
     void random_fill()
     {
         std::array<unsigned char, 81> unvisited;
-        for (unsigned int i = 0; i < 81; ++i)
+        for (unsigned char i = 0; i < 81; ++i)
         {
             unvisited[i] = i;
         }
@@ -252,6 +253,29 @@ public:
             {
                 set(row, col, guess_num_[i]);
                 solve();
+                set(row, col, EMPTY); // backtrack
+            }
+        }
+        return false;
+    }
+
+    bool solve_single()
+    {
+        unsigned int row, col;
+        bool some_free = find_free_cell(row, col);
+        if (!some_free)
+        {
+            return true;
+        }
+        for (size_t i = 0; i < 9; ++i)
+        {
+            if (is_safe(row, col, guess_num_[i]))
+            {
+                set(row, col, guess_num_[i]);
+                if (solve_single())
+                {
+                    return true;
+                }
                 set(row, col, EMPTY); // backtrack
             }
         }

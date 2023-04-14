@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
 
+project(sudoku
+        VERSION 0.9
+        DESCRIPTION "Sudoku Solver and Generator"
+        LANGUAGES CXX)
+
 set(CMAKE_CXX_STANDARD 20)
 
 if(UNIX)
@@ -16,7 +21,12 @@ if (CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -glldb")
 endif()
 
-project(sudoku)
+set(BOOST_ROOT $ENV{BOOST_ROOT})
+find_package(Boost 1.81.0 REQUIRED COMPONENTS program_options)
+message(STATUS "Boost version: ${Boost_VERSION}")
+message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
+message(STATUS "Boost lib dirs: ${Boost_LIBRARY_DIRS}")
+message(STATUS "Boost libs: ${Boost_LIBRARIES}")
 
 add_executable(sudoku
   src/main.cpp
@@ -40,6 +50,11 @@ endif(UNIX)
 
 target_include_directories(sudoku
 	PRIVATE ${PROJECT_INCLUDE_DIRS}
+  PUBLIC ${Boost_INCLUDE_DIRS}
+)
+
+target_link_libraries(sudoku
+	${Boost_LIBRARIES}
 )
 
 install(TARGETS sudoku RUNTIME DESTINATION bin)

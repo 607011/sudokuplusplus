@@ -12,7 +12,7 @@ cmake --build .
 ## Generate sudokus
 
 ```
-./sudoku -d 62 -T 4
+./sudoku -d [difficulty] -T [thread_count]
 ```
 
 where `difficulty` is an integer number between 25 and 64, meaning fields left empty. 64 is hardest possible.

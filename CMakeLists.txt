@@ -1,21 +1,27 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
 
 set(CMAKE_CXX_STANDARD 20)
 
 if(UNIX)
-  set(CMAKE_CXX_FLAGS_DEBUG "-pthread -O0 -g3 -ggdb -DDEBUG -pedantic -Wall -Wextra -Wconversion -Wreorder -Wuninitialized -Wtype-limits -Wno-pragmas")
-  set(CMAKE_CXX_FLAGS_RELEASE "-pthread -O3 -DNDEBUG -Wno-deprecated")
+  set(CMAKE_CXX_FLAGS "-pthread")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O0 -g3 -ggdb -DDEBUG -pedantic -Wall -Wextra -Wconversion -Wreorder -Wuninitialized -Wtype-limits -Wno-pragmas")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG -Wno-deprecated")
 elseif(WIN32)
   set(CMAKE_CXX_FLAGS_DEBUG "/Od /Wall /Zi /wd5045 /wd4514 /wd4820 /D_CRT_SECURE_NO_WARNINGS /D__STDC_WANT_SECURE_LIB__")
   set(CMAKE_CXX_FLAGS_RELEASE "/O2 /W1 /DNDEBUG /D_CRT_SECURE_NO_WARNINGS /D__STDC_WANT_SECURE_LIB__")
 endif(UNIX)
 
+if (CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format-security")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -glldb")
+endif()
+
 project(sudoku)
 
 add_executable(sudoku
-  main.cpp
-  sudoku.cpp
-  util.cpp
+  src/main.cpp
+  src/sudoku.cpp
+  src/util.cpp
 )
 
 if(UNIX)
@@ -23,7 +29,7 @@ if(UNIX)
 endif(UNIX)
 
 add_executable(sudoku2svg
-  sudoku2svg.cpp
+  src/sudoku2svg.cpp
 )
 
 if(UNIX)

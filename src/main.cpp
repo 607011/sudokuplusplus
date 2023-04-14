@@ -75,7 +75,7 @@ int solve()
     return EXIT_SUCCESS;
 }
 
-void board_found(sudoku::board_t const &board, std::chrono::steady_clock::time_point const &t0, int difficulty, int empty_cells, bool complete, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
+void board_found(sudoku::board_t const &board,  std::chrono::time_point<std::chrono::high_resolution_clock> const &t0, int difficulty, int empty_cells, bool complete, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
 {
     std::lock_guard locker(output_mutex);
     if (complete)
@@ -371,70 +371,6 @@ int generate(int difficulty, unsigned int thread_count, generator_thread_t const
     return EXIT_SUCCESS;
 }
 
-#define USAGE R"(
-Examples:
-
-Generate Sudokus with difficulty 62, i.e. 62 empty fields, in 4 threads, using the 'prefill' algorithm:
-
-   sudoku -d 62 -T 4 --algorithm prefill
-
-Algorithm descriptions:
-
-   mincheck
-
-       1. Produce a randomly filled valid board.
-       2. Check board if it has one clear solution.
-          If there's no clear solution, repeat.
-
-   prefill
-
-       1. Fill three independent 3x3 blocks with random numbers.
-       2. Solve the board.
-       3. For each solution clear as many cells as required by the difficulty level.
-          If enough cells could be cleared the board is valid, otherwise disposed of.
-
-   prefill-single
-
-       1. Fill three independent 3x3 blocks with random numbers.
-       2. Calculate the first solution the board.
-       3. Clear as many cells as required by the difficulty level.
-          If enough cells could be cleared the board is valid, otherwise disposed of.
-
-   incremental-fill
-
-       1. [...]
-
-Each Sudoku found will be written to a text file named like sudoku-[ISO8601DateTime]-[difficulty] [seq_no].txt with a contents like (`0` denotes an empty field):
-
-   007000000\
-   060000800\
-   000020031\
-   000032004\
-   805090000\
-   070006000\
-   501000000\
-   000500060\
-   000400070
-
-Read Sudoku from file and solve it:
-
-   sudoku < sudoku-20230318T160133-61.txt
-
-Read Sudoku from stdin and solve it:
-
-   sudoku <<<'\
-   007000000\
-   060000800\
-   000020031\
-   000032004\
-   805090000\
-   070006000\
-   501000000\
-   000500060\
-   000400070'
-
-)"
-
 po::options_description desc("Allow options:");
 
 void usage()
@@ -444,7 +380,67 @@ void usage()
               << "This program will solve a Sudoku served via stdin.\n"
               << "Without any input, Sudokus will be generated.\n\n"
               << desc << "\n\n"
-              << USAGE
+              <<
+"Examples:\n"
+"\n"
+"Generate Sudokus with difficulty 62, i.e. 62 empty fields, in 4 threads, using the 'prefill' algorithm:\n"
+"\n"
+"   sudoku -d 62 -T 4 --algorithm prefill\n"
+"\n"
+"Algorithm descriptions:\n"
+"\n"
+"   mincheck\n"
+"\n"
+"       1. Produce a randomly filled valid board.\n"
+"       2. Check board if it has one clear solution.\n"
+"          If there's no clear solution, repeat.\n"
+"\n"
+"   prefill\n"
+"\n"
+"       1. Fill three independent 3x3 blocks with random numbers.\n"
+"       2. Solve the board.\n"
+"       3. For each solution clear as many cells as required by the difficulty level.\n"
+"          If enough cells could be cleared the board is valid, otherwise disposed of.\n"
+"\n"
+"   prefill-single\n"
+"\n"
+"       1. Fill three independent 3x3 blocks with random numbers.\n"
+"       2. Calculate the first solution the board.\n"
+"       3. Clear as many cells as required by the difficulty level.\n"
+"          If enough cells could be cleared the board is valid, otherwise disposed of.\n"
+"\n"
+"   incremental-fill\n"
+"\n"
+"       1. [...] TODO\n"
+"\n"
+"Each Sudoku found will be written to a text file named like sudoku-[ISO8601DateTime]-[difficulty] [seq_no].txt with a contents like (`0` denotes an empty field):\n"
+"\n"
+"   007000000\\\n"
+"   060000800\\\n"
+"   000020031\\\n"
+"   000032004\\\n"
+"   805090000\\\n"
+"   070006000\\\n"
+"   501000000\\\n"
+"   000500060\\\n"
+"   000400070\\\n"
+"\n"
+"Read Sudoku from file and solve it:\n"
+"\n"
+"   sudoku < sudoku61.txt\n"
+"\n"
+"Read Sudoku from stdin and solve it:\n"
+"\n"
+"   sudoku <<<'\\\n"
+"   007000000\\\n"
+"   060000800\\\n"
+"   000020031\\\n"
+"   000032004\\\n"
+"   805090000\\\n"
+"   070006000\\\n"
+"   501000000\\\n"
+"   000500060\\\n"
+"   000400070'\n"
               << std::endl;
 }
 
@@ -483,7 +479,7 @@ int main(int argc, char *argv[])
         ("difficulty,d", po::value<int>(&difficulty)->default_value(61), "difficulty (25...64, where 64 is ultimately difficult) of the Sudokus to generate")
         ("threads,T", po::value<unsigned int>(&thread_count)->default_value(std::thread::hardware_concurrency()), "number of threads the generators should run in")
         ("verbose,v", po::value(&verbosity)->zero_tokens(), "increase verbosity")
-        ("algorithm,a", po::value(&algorithm_str)->default_value(""), "algorithm to use to generate Sudokus; ");
+        ("algorithm,a", po::value(&algorithm_str)->default_value(DEFAULT_ALGORITHM), "algorithm to use to generate Sudokus; ");
     po::variables_map vm;
     try
     {

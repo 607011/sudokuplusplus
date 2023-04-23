@@ -32,6 +32,7 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <unordered_map>
 
 #include <boost/program_options.hpp>
 

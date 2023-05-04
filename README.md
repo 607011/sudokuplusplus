@@ -3,6 +3,10 @@
 ## Build
 
 ```
+git clone https://github.com/607011/sudokuplusplus.git sudoku++
+cd sudoku++
+git submodule init
+git submodule update --remote --merge
 mkdir -p build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..

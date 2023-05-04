@@ -21,13 +21,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -glldb")
 endif()
 
-set(BOOST_ROOT $ENV{BOOST_ROOT})
-find_package(Boost 1.81.0 REQUIRED COMPONENTS program_options)
-message(STATUS "Boost version: ${Boost_VERSION}")
-message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
-message(STATUS "Boost lib dirs: ${Boost_LIBRARY_DIRS}")
-message(STATUS "Boost libs: ${Boost_LIBRARIES}")
-
 add_executable(sudoku
   src/main.cpp
   src/sudoku.cpp
@@ -60,11 +53,10 @@ endif(UNIX)
 
 target_include_directories(sudoku
 	PRIVATE ${PROJECT_INCLUDE_DIRS}
-  PUBLIC ${Boost_INCLUDE_DIRS}
+  3rdparty/getopt-cpp/include
 )
 
 target_link_libraries(sudoku
-	${Boost_LIBRARIES}
 )
 
 install(TARGETS sudoku RUNTIME DESTINATION bin)

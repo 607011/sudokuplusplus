@@ -1,0 +1,3 @@
+[submodule "3rdparty/getopt-cpp"]
+	path = 3rdparty/getopt-cpp
+	url = https://github.com/607011/getopt-cpp.git

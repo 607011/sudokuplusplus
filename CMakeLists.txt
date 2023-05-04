@@ -43,9 +43,19 @@ add_executable(sudoku2svg
 )
 
 if(UNIX)
-add_custom_command(TARGET sudoku
-  POST_BUILD
-  COMMAND strip sudoku)
+  if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_custom_command(TARGET sudoku
+      POST_BUILD
+      COMMAND strip sudoku)
+  endif()
+endif(UNIX)
+
+if(UNIX)
+  if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_custom_command(TARGET sudoku2svg
+      POST_BUILD
+      COMMAND strip sudoku2svg)
+  endif()
 endif(UNIX)
 
 target_include_directories(sudoku

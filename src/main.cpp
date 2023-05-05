@@ -57,6 +57,7 @@ int solve()
     {
         board_data.append(line);
     }
+    board_data = util::trim(board_data);
     if (board_data.length() != 81)
     {
         std::cerr << "Board data must contain exactly 81 digits.\n";
@@ -481,8 +482,7 @@ int main(int argc, char *argv[])
                     }
                     std::cerr << "\nType `sudoku --help` for help.\n\n";
                     exit(EXIT_FAILURE);
-                }
-            });
+                } });
     try
     {
         opt();

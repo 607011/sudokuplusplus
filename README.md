@@ -128,5 +128,5 @@ Read Sudoku from command line and solve it:
 You can convert a Sudoku file to SVG with `sudoku2svg`, e.g.:
 
 ```
-./sudoku2svg < sudoku-20230318T160133-61.txt > sudoku.svg
+./sudoku2svg sudoku-20230318T160133-61.txt sudoku.svg
 ```

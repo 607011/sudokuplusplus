@@ -3,6 +3,10 @@
 ## Build
 
 ```
+git clone https://github.com/607011/sudokuplusplus.git sudoku++
+cd sudoku++
+git submodule init
+git submodule update --remote --merge
 mkdir -p build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
@@ -32,10 +36,16 @@ Read Sudoku from file and solve it:
 ./sudoku < sudoku-20230318T160133-61.txt
 ```
 
-Read Sudoku from stdin and solve it:
+Read Sudoku from stdin and solve it (Unix):
 
 ```
 ./sudoku <<<"007000000060000800000020031000032004805090000070006000501000000000500060000400070"
+```
+
+Windows example:
+
+```
+echo 007000000060000800000020031000032004805090000070006000501000000000500060000400070| sudoku.exe
 ```
 
 

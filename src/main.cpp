@@ -431,7 +431,6 @@ int main(int argc, char *argv[])
         {"incremental-fill", &incremental_fill_generator_thread}};
     int difficulty{61};
     unsigned int thread_count{std::thread::hardware_concurrency()};
-    std::string algorithm_str{DEFAULT_ALGORITHM};
     std::string sudoku_filename{};
     std::string board_data{};
     int verbosity{0};
@@ -454,15 +453,15 @@ int main(int argc, char *argv[])
              { thread_count = static_cast<unsigned int>(std::stoi(val)); })
         .reg({"-v", "--verbose"}, argparser::no_argument, [&verbosity](std::string const &)
              { ++verbosity; })
-        .reg({"-a", "--algorithm"}, argparser::no_argument, [&algorithm_str, &ALGORITHMS, &generator](std::string const &val)
+        .reg({"-a", "--algorithm"}, argparser::no_argument, [&ALGORITHMS, &generator](std::string const &val)
              {
-                if (ALGORITHMS.contains(algorithm_str))
+                if (ALGORITHMS.find(val) != ALGORITHMS.end())
                 {
-                    generator = ALGORITHMS.at(algorithm_str);
+                    generator = ALGORITHMS.at(val);
                 }
                 else
                 {
-                    std::cerr << "\u001b[31;1mERROR:\u001b[0m invalid algorithm: " << algorithm_str << "\n\n"
+                    std::cerr << "\u001b[31;1mERROR:\u001b[0m invalid algorithm: " << val << "\n\n"
                             << "Choose one of\n";
                     for (auto const &a : ALGORITHMS)
                     {

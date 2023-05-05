@@ -85,7 +85,7 @@ https://github.com/607011/sudokuplusplus.git sudoku++
 cd sudoku++
 git submodule init
 git submodule update --remote --merge
-mkdir -p build
+md build
 cd build
 cmake ..
 cmake --build . --config Release

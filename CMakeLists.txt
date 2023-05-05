@@ -33,6 +33,7 @@ endif(UNIX)
 
 add_executable(sudoku2svg
   src/sudoku2svg.cpp
+  src/util.cpp
 )
 
 if(UNIX)
@@ -55,6 +56,12 @@ target_include_directories(sudoku
 	PRIVATE ${PROJECT_INCLUDE_DIRS}
   3rdparty/getopt-cpp/include
 )
+
+target_include_directories(sudoku2svg
+	PRIVATE ${PROJECT_INCLUDE_DIRS}
+  3rdparty/getopt-cpp/include
+)
+
 
 target_link_libraries(sudoku
 )

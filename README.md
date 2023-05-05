@@ -100,7 +100,7 @@ This will generate `sudoku.exe` and `sudoku2svg.exe`.
 sudoku -d [difficulty] -T [thread_count]
 ```
 
-where `difficulty` is an integer number between 25 and 64, meaning fields left empty. The more fields are left empty the more difficult the Sudoku tendencially is, [but not necessarily](https://github.com/607011/sudokuplusplus/issues/3).
+where `difficulty` is an integer number between 25 and 64, meaning fields left empty. The more fields are left empty the more difficult the Sudoku tendentially is, [but not necessarily](https://github.com/607011/sudokuplusplus/issues/3).
 `thread_count` determines the number of games being generated concurrently. If not given, the number of CPU cores will be used.
 
 Each Sudoku found will be written to a text file named like sudoku-[ISO8601DateTime]-[difficulty] [seq_no].txt with a contents like (`0` denotes an empty field):

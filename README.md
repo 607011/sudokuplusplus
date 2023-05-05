@@ -1,4 +1,14 @@
-# Sudoku generator and solver
+# Sudoku++
+
+**Sudoku generator and solver**
+
+The generator works with a variety of algorithms to produce Sudokus:
+
+`prefill`: This generator first fills three independent 3x3 blocks with random numbers. Then it solves the board. For each solution the generator tries to clear as many cells as required by the difficulty level. If enough cells could be cleared the board is valid, otherwise disposed of.
+
+`prefill-single`: Same as `prefill`, but only the first solution found is used.
+
+`mincheck`: Another generator first produces valid minimal boards with the specified number of empty cells. Then each board is checked if it has one clear solution. If there's no clear solution, the process repeats.
 
 ## Build
 
@@ -90,8 +100,8 @@ This will generate `sudoku.exe` and `sudoku2svg.exe`.
 sudoku -d [difficulty] -T [thread_count]
 ```
 
-where `difficulty` is an integer number between 25 and 64, meaning fields left empty. 64 is hardest possible.
-`thread_count` determines the number of games being generated concurrently. If not given, the number of cores will be used.
+where `difficulty` is an integer number between 25 and 64, meaning fields left empty. The more fields are left empty the more difficult the Sudoku tendencially is, [but not necessarily](https://github.com/607011/sudokuplusplus/issues/3).
+`thread_count` determines the number of games being generated concurrently. If not given, the number of CPU cores will be used.
 
 Each Sudoku found will be written to a text file named like sudoku-[ISO8601DateTime]-[difficulty] [seq_no].txt with a contents like (`0` denotes an empty field):
 

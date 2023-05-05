@@ -49,21 +49,8 @@ std::string iso_datetime_now()
     return std::string(buf);
 }
 
-int solve(std::string const &sudoku_file)
+int solve(std::string const &board_data)
 {
-    std::ifstream fin{sudoku_file};
-    std::string board_data;
-    std::string line;
-    while (std::getline(fin, line))
-    {
-        board_data.append(line);
-    }
-    board_data = util::trim(board_data, " \t\r\n");
-    if (board_data.length() != 81)
-    {
-        std::cerr << "Board data must contain exactly 81 digits.\n";
-        return EXIT_FAILURE;
-    }
     sudoku game(board_data);
     auto empty_count = game.empty_count();
     std::string level = game.level();
@@ -426,7 +413,11 @@ void usage()
                  "\n"
                  "Read Sudoku from file and solve it:\n"
                  "\n"
-                 "   sudoku --solve sudoku61.txt\n"
+                 "   sudoku --solve-file sudoku61.txt\n"
+                 "\n"
+                 "Or solve Sudoku serialized as a string:\n"
+                 "\n"
+                 "   sudoku --solve 008007006000090000012000040100483900000560020000000000000050009000000061001600030\n"
                  "\n";
 }
 
@@ -441,7 +432,8 @@ int main(int argc, char *argv[])
     int difficulty{61};
     unsigned int thread_count{std::thread::hardware_concurrency()};
     std::string algorithm_str{DEFAULT_ALGORITHM};
-    std::string sudoku_file{};
+    std::string sudoku_filename{};
+    std::string board_data{};
     int verbosity{0};
     generator_thread_t generator = prefill_generator_thread;
 
@@ -452,8 +444,10 @@ int main(int argc, char *argv[])
              {
                 usage();
                 exit(EXIT_SUCCESS); })
-        .reg({"--solve"}, argparser::required_argument, [&sudoku_file](std::string const &val)
-             { sudoku_file = val; })
+        .reg({"--solve"}, argparser::required_argument, [&board_data](std::string const &val)
+             { board_data = val; })
+        .reg({"--solve-file"}, argparser::required_argument, [&sudoku_filename](std::string const &val)
+             { sudoku_filename = val; })
         .reg({"-d", "--difficulty"}, argparser::required_argument, [&difficulty](std::string const &val)
              { difficulty = std::max(25, std::min(std::stoi(val), 64)); })
         .reg({"-T", "--threads"}, argparser::required_argument, [&thread_count](std::string const &val)
@@ -488,9 +482,29 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    if (!sudoku_file.empty())
+    if (!sudoku_filename.empty() && !board_data.empty())
     {
-        return solve(sudoku_file);
+        std::cerr << "\u001b[31;1mERROR:\u001b[0m Only one of `--solve` or `--solve-file` is allowed.\n\n";
+        return EXIT_FAILURE;
+    }
+    if (!sudoku_filename.empty() )
+    {
+        std::ifstream fin{sudoku_filename};
+        std::string line;
+        while (std::getline(fin, line))
+        {
+            board_data.append(line);
+        }
+    }
+    if (!board_data.empty())
+    {
+        board_data = util::trim(board_data, " \t\r\n");
+        if (board_data.length() != 81)
+        {
+            std::cerr << "\u001b[31;1mERROR:\u001b[0m Board data must contain exactly 81 digits.\n";
+            return EXIT_FAILURE;
+        }
+        return solve(board_data);
     }
 
     int rc = generate(difficulty, thread_count, generator);

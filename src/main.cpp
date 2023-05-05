@@ -100,7 +100,7 @@ void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chro
     auto t1 = std::chrono::high_resolution_clock().now();
     auto dt = t1 > t0 ? t1 - t0 : std::chrono::duration<float, std::milli>(1);
     ++n_games_produced;
-    std::cout << std::setprecision(3) << (n_games_produced * 1e3f / dt.count()) << " games/sec; "
+    std::cout << std::setprecision(3) << (static_cast<float>(n_games_produced) * 1e3f / dt.count()) << " games/sec; "
               << n_games_produced << " games total; of these "
               << n_games_valid << " with specified difficulty " << difficulty << ".\n\n";
 }

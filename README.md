@@ -8,7 +8,7 @@ The generator works with a variety of algorithms to produce Sudokus:
 
 `prefill-single`: Same as `prefill`, but only the first solution found is used.
 
-`mincheck`: Another generator first produces valid minimal boards with the specified number of empty cells. Then each board is checked if it has one clear solution. If there's no clear solution, the process repeats.
+`mincheck`: This generator produces valid minimal boards with the specified number of empty cells. Each board is checked if it has one clear solution. If there's no clear solution, the process repeats.
 
 ## Build
 

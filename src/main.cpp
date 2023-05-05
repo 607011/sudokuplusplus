@@ -457,8 +457,8 @@ int main(int argc, char *argv[])
     opt
         .reg({"-?", "--help"}, argparser::no_argument, [](std::string const &)
              {
-        usage();
-        exit(EXIT_SUCCESS); })
+                usage();
+                exit(EXIT_SUCCESS); })
         .reg({"-d", "--difficulty"}, argparser::required_argument, [&difficulty](std::string const &val)
              { difficulty = std::max(25, std::min(std::stoi(val), 64)); })
         .reg({"-T", "--threads"}, argparser::required_argument, [&thread_count](std::string const &val)

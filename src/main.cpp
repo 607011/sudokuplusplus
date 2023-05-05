@@ -49,15 +49,16 @@ std::string iso_datetime_now()
     return std::string(buf);
 }
 
-int solve()
+int solve(std::string const &sudoku_file)
 {
+    std::ifstream fin{sudoku_file};
     std::string board_data;
     std::string line;
-    while (std::getline(std::cin, line))
+    while (std::getline(fin, line))
     {
         board_data.append(line);
     }
-    board_data = util::trim(board_data);
+    board_data = util::trim(board_data, " \t\r\n");
     if (board_data.length() != 81)
     {
         std::cerr << "Board data must contain exactly 81 digits.\n";
@@ -66,7 +67,8 @@ int solve()
     sudoku game(board_data);
     auto empty_count = game.empty_count();
     std::string level = game.level();
-    std::cout << game << "\n";
+    std::cout << "Trying to solve\n\n"
+              << game << '\n';
     game.solve();
     std::cout << "number of solutions: " << game.solution_count() << " (" << game.solved_boards().size() << ")\n"
               << "level of difficulty: " << level << " (" << empty_count << " of 64)\n\n"
@@ -424,20 +426,8 @@ void usage()
                  "\n"
                  "Read Sudoku from file and solve it:\n"
                  "\n"
-                 "   sudoku < sudoku61.txt\n"
-                 "\n"
-                 "Read Sudoku from stdin and solve it (does \u001b[31;1mnot\u001b[0m work on Windows):\n"
-                 "\n"
-                 "   sudoku <<<'\\\n"
-                 "   007000000\\\n"
-                 "   060000800\\\n"
-                 "   000020031\\\n"
-                 "   000032004\\\n"
-                 "   805090000\\\n"
-                 "   070006000\\\n"
-                 "   501000000\\\n"
-                 "   000500060\\\n"
-                 "   000400070'\n\n";
+                 "   sudoku --solve sudoku61.txt\n"
+                 "\n";
 }
 
 int main(int argc, char *argv[])
@@ -448,11 +438,13 @@ int main(int argc, char *argv[])
         {"prefill", &prefill_generator_thread},
         {"mincheck", &mincheck_generator_thread},
         {"incremental-fill", &incremental_fill_generator_thread}};
-    int difficulty = 61;
-    unsigned int thread_count = std::thread::hardware_concurrency();
-    std::string algorithm_str = DEFAULT_ALGORITHM;
-    int verbosity;
+    int difficulty{61};
+    unsigned int thread_count{std::thread::hardware_concurrency()};
+    std::string algorithm_str{DEFAULT_ALGORITHM};
+    std::string sudoku_file{};
+    int verbosity{0};
     generator_thread_t generator = prefill_generator_thread;
+
     using argparser = argparser::argparser;
     argparser opt(argc, argv);
     opt
@@ -460,6 +452,8 @@ int main(int argc, char *argv[])
              {
                 usage();
                 exit(EXIT_SUCCESS); })
+        .reg({"--solve"}, argparser::required_argument, [&sudoku_file](std::string const &val)
+             { sudoku_file = val; })
         .reg({"-d", "--difficulty"}, argparser::required_argument, [&difficulty](std::string const &val)
              { difficulty = std::max(25, std::min(std::stoi(val), 64)); })
         .reg({"-T", "--threads"}, argparser::required_argument, [&thread_count](std::string const &val)
@@ -494,11 +488,9 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    fseek(stdin, 0, SEEK_END);
-    if (ftell(stdin) > 0)
+    if (!sudoku_file.empty())
     {
-        rewind(stdin);
-        return solve();
+        return solve(sudoku_file);
     }
 
     int rc = generate(difficulty, thread_count, generator);

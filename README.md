@@ -114,7 +114,13 @@ Each Sudoku found will be written to a text file named like sudoku-[ISO8601DateT
 Read Sudoku from file and solve it:
 
 ```
-./sudoku --solve sudoku-20230318T160133-61.txt
+./sudoku --solve-file sudoku-20230318T160133-61.txt
+```
+
+Read Sudoku from command line and solve it:
+
+```
+./sudoku --solve 007000000060000800000020031000032004805090000070006000501000000000500060000400070
 ```
 
 ## Printable Sudokus

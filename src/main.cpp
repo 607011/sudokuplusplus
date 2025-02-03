@@ -90,6 +90,7 @@ void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chro
                   << std::flush;
         std::ofstream out(filename);
         out.write(board.data(), static_cast<std::streamsize>(board.size()));
+        out << std::endl;
     }
     else
     {

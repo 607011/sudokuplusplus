@@ -85,10 +85,12 @@ void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chro
         for (unsigned int col = 0; col < 9; ++col)
         {
             char c = board.at(9 * row + col);
-            if (c == '0') {
+            if (c == '0')
+            {
                 attroff(A_BOLD);
             }
-            else {
+            else
+            {
                 attron(A_BOLD);
             }
             mvprintw(row + 6, 2 + col * 2, "%c", c);

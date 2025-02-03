@@ -342,7 +342,12 @@ public:
      */
     inline char at(unsigned int idx) const
     {
-        return board_[idx];
+        return board_.at(idx);
+    }
+
+    inline char at(unsigned int row, unsigned int col)
+    {
+        return board_.at(row * 9 + col);
     }
 
     /**

@@ -7,6 +7,9 @@ project(sudoku
 
 set(CMAKE_CXX_STANDARD 20)
 
+find_package(Curses REQUIRED)
+include_directories()
+
 if(UNIX)
   set(CMAKE_CXX_FLAGS "-pthread")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O0 -g3 -ggdb -DDEBUG -pedantic -Wall -Wextra -Wconversion -Wreorder -Wuninitialized -Wtype-limits -Wno-pragmas")
@@ -55,6 +58,8 @@ endif(UNIX)
 target_include_directories(sudoku
 	PRIVATE ${PROJECT_INCLUDE_DIRS}
   3rdparty/getopt-cpp/include
+  PUBLIC
+  ${CURSES_INCLUDE_DIR}
 )
 
 target_include_directories(sudoku2svg
@@ -63,7 +68,6 @@ target_include_directories(sudoku2svg
 )
 
 
-target_link_libraries(sudoku
-)
+target_link_libraries(sudoku ${CURSES_LIBRARY})
 
 install(TARGETS sudoku RUNTIME DESTINATION bin)

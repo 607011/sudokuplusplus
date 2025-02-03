@@ -20,6 +20,8 @@
     SOFTWARE.
 */
 
+#include <atomic>
+#include <csignal>
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
@@ -35,10 +37,22 @@
 #include <unordered_map>
 
 #include <getopt.hpp>
+#include <ncurses.h>
 
 #include "sudoku.hpp"
 
 typedef std::function<void(int, std::mutex &, long long &, long long &)> generator_thread_t;
+
+std::atomic<bool> do_quit{false};
+
+void signal_handler(int signum)
+{
+    if (signum == SIGINT)
+    {
+        std::cout << "\nReceived SIGINT. Shutting down gracefully ..." << std::endl;
+        do_quit = true;
+    }
+}
 
 std::string iso_datetime_now()
 {
@@ -66,16 +80,23 @@ int solve(std::string const &board_data)
 void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chrono::high_resolution_clock> const &t0, int num_empty_cells, int empty_cells, bool complete, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
 {
     std::lock_guard locker(output_mutex);
+    for (unsigned int row = 0; row < 9; ++row)
+    {
+        for (unsigned int col = 0; col < 9; ++col)
+        {
+            char c = board.at(9 * row + col);
+            if (c == '0') {
+                attroff(A_BOLD);
+            }
+            else {
+                attron(A_BOLD);
+            }
+            mvprintw(row + 6, 2 + col * 2, "%c", c);
+        }
+    }
     if (complete)
     {
         ++n_games_valid;
-        std::cout << "\n\n\u001b[32;1mSuccess!\n\n";
-        for (int i = 0; i < 81; i += 9)
-        {
-            std::cout.write(board.data() + i, 9);
-            std::cout << '\n';
-        }
-        std::cout << "\u001b[0m\n";
         std::string filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(num_empty_cells) + ".txt";
         if (std::filesystem::exists(filename))
         {
@@ -86,23 +107,20 @@ void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chro
                 ++seq_no;
             } while (std::filesystem::exists(filename));
         }
-        std::cout << "\u001b[32mSaving to " << filename << " ... \u001b[0m\n\n"
-                  << std::flush;
+
         std::ofstream out(filename);
         out.write(board.data(), static_cast<std::streamsize>(board.size()));
         out << std::endl;
+        attron(A_BOLD);
+        mvprintw(16, 0, "Game saved to '%s' ...", filename.c_str());
     }
-    else
-    {
-        std::cout << empty_cells << " cells above limit."
-                  << " \u001b[31;1mDiscarded.\u001b[0m\n\n";
-    }
+    attroff(A_BOLD);
     auto t1 = std::chrono::high_resolution_clock().now();
     auto dt = t1 > t0 ? t1 - t0 : std::chrono::duration<float, std::milli>(1);
     ++n_games_produced;
-    std::cout << std::setprecision(3) << (static_cast<float>(n_games_produced) * 1e3f / dt.count()) << " games/sec; "
-              << n_games_produced << " games total; of these "
-              << n_games_valid << " with " << num_empty_cells << " empty cells.\n\n";
+    mvprintw(3, 0, "%.3f games/sec", static_cast<float>(n_games_produced) * 1e3f / dt.count());
+    mvprintw(4, 0, "valid / total games: %ld / %ld", n_games_valid, n_games_produced);
+    refresh();
 }
 
 void incremental_fill_generator_thread(int num_empty_cells, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
@@ -116,11 +134,9 @@ void incremental_fill_generator_thread(int num_empty_cells, std::mutex &output_m
         unvisited[i] = i;
     }
     auto t0 = std::chrono::high_resolution_clock().now();
-    while (true)
+    while (!do_quit)
     {
         game.random_fill();
-        std::cout << "Trying ...\n"
-                  << game << "\n";
         // visit cells in random order until all are visited
         // or the desired amount of empty cells is reached
         int empty_cells = num_empty_cells;
@@ -163,7 +179,7 @@ void mincheck_generator_thread(int num_empty_cells, std::mutex &output_mutex, lo
         unvisited[i] = i;
     }
     auto t0 = std::chrono::high_resolution_clock().now();
-    while (true)
+    while (!do_quit)
     {
         std::shuffle(unvisited.begin(), unvisited.end(), game.rng());
         unsigned int unvisited_idx = 0;
@@ -221,7 +237,7 @@ void prefill_generator_thread(int num_empty_cells, std::mutex &output_mutex, lon
         unvisited[i] = i;
     }
     auto t0 = std::chrono::high_resolution_clock().now();
-    while (true)
+    while (!do_quit)
     {
         // populate board
         unsigned int num_idx = 0;
@@ -236,12 +252,9 @@ void prefill_generator_thread(int num_empty_cells, std::mutex &output_mutex, lon
         }
         // generate all solutions
         game.solve();
-        std::cout << "# solutions: " << game.solved_boards().size() << "\n\n";
         for (sudoku::board_t const &board : game.solved_boards())
         {
             sudoku possible_solution(board);
-            std::cout << "Trying ...\n"
-                      << possible_solution << std::endl;
             // visit cells in random order until all are visited
             // or the desired amount of empty cells is reached
             int empty_cells = num_empty_cells;
@@ -291,7 +304,7 @@ void prefill_single_generator_thread(int num_empty_cells, std::mutex &output_mut
         unvisited[i] = i;
     }
     auto t0 = std::chrono::high_resolution_clock().now();
-    while (true)
+    while (!do_quit)
     {
         // populate board
         unsigned int num_idx = 0;
@@ -304,10 +317,8 @@ void prefill_single_generator_thread(int num_empty_cells, std::mutex &output_mut
                 game.shuffle_guesses();
             }
         }
-        // generate all solutions
+
         game.solve_single();
-        std::cout << "Trying ...\n"
-                  << game << '\n';
 
         // visit cells in random order until all are visited
         // or the desired amount of empty cells is reached
@@ -336,10 +347,17 @@ void prefill_single_generator_thread(int num_empty_cells, std::mutex &output_mut
 
 int generate(int num_empty_cells, unsigned int thread_count, generator_thread_t const &generator)
 {
-    std::cout << "Generating games with " << num_empty_cells << " empty cells"
-              << " in " << thread_count << " thread" << (thread_count == 1 ? "" : "s")
-              << " ...\n"
-              << "(Press Ctrl+C to break.)" << std::endl;
+    initscr();
+    cbreak();
+    noecho();
+    curs_set(0);
+    start_color();
+    attron(A_BOLD);
+    mvprintw(0, 0, "== Sudoku Generator ==");
+    attroff(A_BOLD);
+    mvprintw(1, 0, "#empty cells wanted: %d", num_empty_cells);
+    mvprintw(2, 0, "#threads           : %u", thread_count);
+    refresh();
 
     std::vector<std::thread> threads;
     threads.reserve(std::thread::hardware_concurrency());
@@ -358,6 +376,11 @@ int generate(int num_empty_cells, unsigned int thread_count, generator_thread_t 
     {
         thread.join();
     }
+    move(16, 0);
+    clrtoeol();  
+    mvprintw(16, 0, "Exiting ...");
+    refresh();
+    endwin();
     return EXIT_SUCCESS;
 }
 
@@ -382,6 +405,8 @@ void usage()
                  "          If there's no clear solution, repeat.\n"
                  "\n"
                  "   prefill\n"
+                 "\n"
+                 "       This is the default algorithm\n"
                  "\n"
                  "       1. Fill three independent 3x3 blocks with random numbers.\n"
                  "       2. Solve the board.\n"
@@ -423,9 +448,10 @@ void usage()
 
 int main(int argc, char *argv[])
 {
+    // std::signal(SIGINT, signal_handler);
     std::string const DEFAULT_ALGORITHM = "prefill-single";
     std::unordered_map<std::string, generator_thread_t> const ALGORITHMS = {
-        {DEFAULT_ALGORITHM, &prefill_single_generator_thread},
+        {"prefill-single", &prefill_single_generator_thread},
         {"prefill", &prefill_generator_thread},
         {"mincheck", &mincheck_generator_thread},
         {"incremental-fill", &incremental_fill_generator_thread}};
@@ -453,7 +479,7 @@ int main(int argc, char *argv[])
              { thread_count = static_cast<unsigned int>(std::stoi(val)); })
         .reg({"-v", "--verbose"}, argparser::no_argument, [&verbosity](std::string const &)
              { ++verbosity; })
-        .reg({"-a", "--algorithm"}, argparser::no_argument, [&ALGORITHMS, &generator](std::string const &val)
+        .reg({"-a", "--algorithm"}, argparser::required_argument, [&ALGORITHMS, &generator](std::string const &val)
              {
                 if (ALGORITHMS.find(val) != ALGORITHMS.end())
                 {
@@ -461,7 +487,7 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    std::cerr << "\u001b[31;1mERROR:\u001b[0m invalid algorithm: " << val << "\n\n"
+                    std::cerr << "\u001b[31;1mERROR:\u001b[0m invalid algorithm: '" << val << "'\n\n"
                             << "Choose one of\n";
                     for (auto const &a : ALGORITHMS)
                     {
@@ -486,7 +512,7 @@ int main(int argc, char *argv[])
         std::cerr << "\u001b[31;1mERROR:\u001b[0m Only one of `--solve` or `--solve-file` is allowed.\n\n";
         return EXIT_FAILURE;
     }
-    if (!sudoku_filename.empty() )
+    if (!sudoku_filename.empty())
     {
         std::ifstream fin{sudoku_filename};
         std::string line;
@@ -507,5 +533,6 @@ int main(int argc, char *argv[])
     }
 
     int rc = generate(num_empty_cells, thread_count, generator);
+
     return rc;
 }

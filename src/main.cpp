@@ -121,7 +121,7 @@ void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chro
     auto dt = t1 > t0 ? t1 - t0 : std::chrono::duration<float, std::milli>(1);
     ++n_games_produced;
     mvprintw(3, 0, "%.3f games/sec", static_cast<float>(n_games_produced) * 1e3f / dt.count());
-    mvprintw(4, 0, "valid / total games: %ld / %ld", n_games_valid, n_games_produced);
+    mvprintw(4, 0, "valid / total games: %lld / %lld", n_games_valid, n_games_produced);
     refresh();
 }
 

@@ -98,5 +98,14 @@ target_link_libraries(
   GTest::gtest_main
 )
 
+add_executable(test_set
+  tests/test_set.cpp
+)
+target_link_libraries(
+  test_set
+  GTest::gtest_main
+)
+
 include(GoogleTest)
 gtest_discover_tests(test_sudoku)
+gtest_discover_tests(test_set)

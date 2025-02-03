@@ -24,6 +24,8 @@
 
 #include "sudoku.hpp"
 
+const easy_set<char> sudoku::EMPTY_SET = {'0'};
+
 std::ostream &operator<<(std::ostream &os, const sudoku::board_t &board)
 {
     for (int i = 0; i < 81; i += 9)

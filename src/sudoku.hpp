@@ -23,22 +23,33 @@
 #ifndef __SUDOKU_HPP__
 #define __SUDOKU_HPP__
 
-#include <cassert>
-#include <string>
 #include <array>
+#include <cassert>
+#include <ctime>
+#include <string>
 #include <vector>
 #include <random>
 #include <algorithm>
 #include <iostream>
-#include <ctime>
+#include <optional>
+#include <ranges>
 #include <vector>
 
+#include "easy_set.hpp"
 #include "util.hpp"
+
 
 class sudoku
 {
 public:
-    typedef std::array<char, 81> board_t;
+    typedef std::array<char, 81U> board_t;
+
+    enum
+    {
+        Row,
+        Column,
+        Block
+    };
 
     sudoku()
     {
@@ -282,9 +293,89 @@ public:
         return false;
     }
 
+    const auto get_row(int row_idx) const
+    {
+        return board_ | std::views::drop(row_idx * 9) | std::views::take(9);
+    }
+
+    const auto get_col(int col_idx) const
+    {
+        return std::views::iota(0, 9) |
+               std::views::transform([=](int row)
+                                     { return board_[row * 9 + col_idx]; });
+    }
+
+    const auto get_block(int block_idx)
+    {
+        int block_row = (block_idx / 3) * 3;
+        int block_col = (block_idx % 3) * 3;
+
+        return std::views::iota(0, 9) |
+               std::views::transform([=](int index)
+                                     {
+                int row = block_row + index / 3;
+                int col = block_col + index % 3;
+                return board_.at(row * 9 + col); });
+    }
+
+    const auto get_candidates_row(int row_idx) const
+    {
+        return candidates_ | std::views::drop(row_idx * 9) | std::views::take(9);
+    }
+
+    const auto get_candidates_col(int col_idx) const
+    {
+        return std::views::iota(0, 9) |
+               std::views::transform([=](int row)
+                                     { return candidates_[row * 9 + col_idx]; });
+    }
+
+    const auto get_candidates_block(int block_idx)
+    {
+        int block_row = (block_idx / 3) * 3;
+        int block_col = (block_idx % 3) * 3;
+
+        return std::views::iota(0, 9) |
+               std::views::transform([=](int index)
+                                     {
+                int row = block_row + index / 3;
+                int col = block_col + index % 3;
+                return candidates_.at(row * 9 + col); });
+    }
+
+    void calc_all_candidates()
+    {
+        for (auto candidates : candidates_)
+        {
+            candidates.clear();
+        }
+        std::array<std::optional<easy_set<char>>, 9U> col_forbidden;
+        std::array<std::array<std::optional<easy_set<char>>, 3U>, 3U> block_forbidden;
+        for (int row = 0; row < 9; ++row)
+        {
+            auto row_forbidden = easy_set<char>(std::begin(get_row(row)), std::end(get_row(row)));
+            for (int col = 0; col < 9; ++col)
+            {
+                if (!col_forbidden.at(col).has_value())
+                {
+                    col_forbidden[col] = easy_set<char>(std::begin(get_col(col)), std::end(get_col(col)));
+                }
+                int block_row_idx = row / 3;
+                int block_col_idx = row % 3;
+                if (!block_forbidden.at(block_row_idx).at(block_col_idx).has_value())
+                {
+                    int block_idx = block_row_idx * 3 * 9 + block_col_idx * 3;
+                    auto bforbidden = easy_set<char>(std::begin(get_block(block_idx)), std::end(get_block(block_idx)));
+                    // std::set_difference(std::begin(bforbidden), std::end(bforbidden),std::begin(EMPTY_SET), std::end(EMPTY_SET), std::begin(block_forbidden[block_row_idx][block_col_idx]));
+                }
+            }
+        }
+    }
+
     bool solve_like_a_human()
     {
         // TODO: implement lots of techniques ;-)
+        return false;
     }
 
     /**
@@ -458,12 +549,16 @@ public:
      */
     static constexpr char EMPTY = '0';
 
+    static const easy_set<char> EMPTY_SET;
+
 private:
     /**
      * @brief Holds the Sudoku cells in a flattened array.
      *
      */
     board_t board_;
+
+    std::array<easy_set<char>, 81U> candidates_;
 
     /**
      * @brief Holds all solutions to the current game.

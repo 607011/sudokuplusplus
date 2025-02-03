@@ -58,7 +58,7 @@ std::string iso_datetime_now()
 {
     time_t now;
     time(&now);
-    char buf[sizeof("20230318T091601")];
+    char buf[sizeof("20230318T091601") + 1];
     strftime(buf, sizeof(buf), "%Y%m%dT%H%M%S", gmtime(&now));
     return std::string(buf);
 }

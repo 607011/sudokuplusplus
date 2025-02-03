@@ -44,12 +44,12 @@
 typedef std::function<void(int, std::mutex &, long long &, long long &)> generator_thread_t;
 
 std::atomic<bool> do_quit{false};
+#define ATTENTION_PAIR (1)
 
 void signal_handler(int signum)
 {
     if (signum == SIGINT)
     {
-        std::cout << "\nReceived SIGINT. Shutting down gracefully ..." << std::endl;
         do_quit = true;
     }
 }
@@ -75,6 +75,15 @@ int solve(std::string const &board_data)
               << game.solved_boards().front()
               << "\n";
     return EXIT_SUCCESS;
+}
+
+void about_to_exit()
+{
+    move(16, 0);
+    clrtoeol();
+    attron(COLOR_PAIR(ATTENTION_PAIR));
+    mvprintw(16, 0, " Exiting ... please wait! ");
+    attroff(COLOR_PAIR(ATTENTION_PAIR));
 }
 
 void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chrono::high_resolution_clock> const &t0, int num_empty_cells, int empty_cells, bool complete, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
@@ -163,6 +172,7 @@ void incremental_fill_generator_thread(int num_empty_cells, std::mutex &output_m
             board_found(game.board(), t0, num_empty_cells, empty_cells, complete, output_mutex, n_games_valid, n_games_produced);
         }
     }
+    about_to_exit();
 }
 
 /**
@@ -212,6 +222,7 @@ void mincheck_generator_thread(int num_empty_cells, std::mutex &output_mutex, lo
         }
         game.reset();
     }
+    about_to_exit();
 }
 
 /**
@@ -283,6 +294,7 @@ void prefill_generator_thread(int num_empty_cells, std::mutex &output_mutex, lon
         }
         game.reset();
     }
+    about_to_exit();
 }
 
 /**
@@ -345,7 +357,10 @@ void prefill_single_generator_thread(int num_empty_cells, std::mutex &output_mut
         board_found(game.board(), t0, num_empty_cells, empty_cells, complete, output_mutex, n_games_valid, n_games_produced);
         game.reset();
     }
+    about_to_exit();
 }
+
+
 
 int generate(int num_empty_cells, unsigned int thread_count, generator_thread_t const &generator)
 {
@@ -354,6 +369,8 @@ int generate(int num_empty_cells, unsigned int thread_count, generator_thread_t 
     noecho();
     curs_set(0);
     start_color();
+    init_pair(ATTENTION_PAIR, COLOR_WHITE, COLOR_RED);
+
     attron(A_BOLD);
     mvprintw(0, 0, "== Sudoku Generator ==");
     attroff(A_BOLD);
@@ -408,14 +425,14 @@ void usage()
                  "\n"
                  "   prefill\n"
                  "\n"
-                 "       This is the default algorithm\n"
-                 "\n"
                  "       1. Fill three independent 3x3 blocks with random numbers.\n"
                  "       2. Solve the board.\n"
                  "       3. For each solution clear as many cells as requested.\n"
                  "          If enough cells could be cleared the board is valid, otherwise disposed of.\n"
                  "\n"
                  "   prefill-single\n"
+                 "\n"
+                 "       This is the default algorithm\n"
                  "\n"
                  "       1. Fill three independent 3x3 blocks with random numbers.\n"
                  "       2. Calculate the first solution the board.\n"
@@ -462,7 +479,7 @@ int main(int argc, char *argv[])
     std::string sudoku_filename{};
     std::string board_data{};
     int verbosity{0};
-    generator_thread_t generator = prefill_generator_thread;
+    generator_thread_t generator = prefill_single_generator_thread;
 
     using argparser = argparser::argparser;
     argparser opt(argc, argv);

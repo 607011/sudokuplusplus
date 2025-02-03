@@ -47,9 +47,9 @@ int main(int argc, char *argv[])
     using argparser = argparser::argparser;
     argparser opt(argc, argv);
     opt
-        .pos([&sudoku_filename](std::string const &val)
+        .pos("SUDOKU_FILENAME", [&sudoku_filename](std::string const &val)
              { sudoku_filename = val; })
-        .pos([&svg_filename](std::string const &val)
+        .pos("SVG_FILENAME", [&svg_filename](std::string const &val)
              { svg_filename = val; });
     try
     {

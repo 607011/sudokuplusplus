@@ -450,7 +450,7 @@ void usage()
 
 int main(int argc, char *argv[])
 {
-    // std::signal(SIGINT, signal_handler);
+    std::signal(SIGINT, signal_handler);
     std::string const DEFAULT_ALGORITHM = "prefill-single";
     std::unordered_map<std::string, generator_thread_t> const ALGORITHMS = {
         {"prefill-single", &prefill_single_generator_thread},

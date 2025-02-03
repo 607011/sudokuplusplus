@@ -303,30 +303,6 @@ public:
     }
 
     /**
-     * @brief Returns a string describing the Sudoku's difficulty.
-     *
-     */
-    std::string level() const
-    {
-        typedef struct
-        {
-            int empty_cells;
-            std::string description;
-        } e2d;
-        auto difficulty = empty_count();
-        static const std::vector<e2d> lvl = {
-            {25, "LEAD"},
-            {35, "GOLD"},
-            {45, "PLATINUM"},
-            {52, "TITANIUM"},
-            {58, "HARDENED STEEL"},
-            {64, "TUNGSTEN"}};
-        auto const &it = std::find_if(lvl.begin(), lvl.end(), [difficulty](e2d const &c) -> bool
-                                      { return difficulty <= c.empty_cells; });
-        return it->description;
-    }
-
-    /**
      * @brief Get all calculated solutions of this Sudoku game.
      *
      * @return std::vector<board_t> const&

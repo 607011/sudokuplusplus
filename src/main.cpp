@@ -53,18 +53,17 @@ int solve(std::string const &board_data)
 {
     sudoku game(board_data);
     auto empty_count = game.empty_count();
-    std::string level = game.level();
     std::cout << "Trying to solve\n\n"
               << game << '\n';
     game.solve();
     std::cout << "number of solutions: " << game.solution_count() << " (" << game.solved_boards().size() << ")\n"
-              << "level of difficulty: " << level << " (" << empty_count << " of 64)\n\n"
+              << "empty cells: " << empty_count << " of max. 64\n\n"
               << game.solved_boards().front()
               << "\n";
     return EXIT_SUCCESS;
 }
 
-void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chrono::high_resolution_clock> const &t0, int difficulty, int empty_cells, bool complete, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
+void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chrono::high_resolution_clock> const &t0, int num_empty_cells, int empty_cells, bool complete, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
 {
     std::lock_guard locker(output_mutex);
     if (complete)
@@ -77,13 +76,13 @@ void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chro
             std::cout << '\n';
         }
         std::cout << "\u001b[0m\n";
-        std::string filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(difficulty) + ".txt";
+        std::string filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(num_empty_cells) + ".txt";
         if (std::filesystem::exists(filename))
         {
             int seq_no = 0;
             do
             {
-                filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(difficulty) + " (" + std::to_string(seq_no) + ").txt";
+                filename = "sudoku-" + iso_datetime_now() + "-" + std::to_string(num_empty_cells) + " (" + std::to_string(seq_no) + ").txt";
                 ++seq_no;
             } while (std::filesystem::exists(filename));
         }
@@ -102,10 +101,10 @@ void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chro
     ++n_games_produced;
     std::cout << std::setprecision(3) << (static_cast<float>(n_games_produced) * 1e3f / dt.count()) << " games/sec; "
               << n_games_produced << " games total; of these "
-              << n_games_valid << " with specified difficulty " << difficulty << ".\n\n";
+              << n_games_valid << " with " << num_empty_cells << " empty cells.\n\n";
 }
 
-void incremental_fill_generator_thread(int difficulty, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
+void incremental_fill_generator_thread(int num_empty_cells, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
 {
     output_mutex.lock();
     sudoku game;
@@ -123,7 +122,7 @@ void incremental_fill_generator_thread(int difficulty, std::mutex &output_mutex,
                   << game << "\n";
         // visit cells in random order until all are visited
         // or the desired amount of empty cells is reached
-        int empty_cells = difficulty;
+        int empty_cells = num_empty_cells;
         unsigned int visited_idx = unvisited.size();
         std::shuffle(unvisited.begin(), unvisited.end(), game.rng());
         while (empty_cells > 0 && visited_idx-- > 0)
@@ -142,7 +141,7 @@ void incremental_fill_generator_thread(int difficulty, std::mutex &output_mutex,
         }
         const bool complete = empty_cells == 0;
         {
-            board_found(game.board(), t0, difficulty, empty_cells, complete, output_mutex, n_games_valid, n_games_produced);
+            board_found(game.board(), t0, num_empty_cells, empty_cells, complete, output_mutex, n_games_valid, n_games_produced);
         }
     }
 }
@@ -152,7 +151,7 @@ void incremental_fill_generator_thread(int difficulty, std::mutex &output_mutex,
  *
  * Each board is then checked if it has one clear solution. If there's no clear solution, the process repeats.
  */
-void mincheck_generator_thread(int difficulty, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
+void mincheck_generator_thread(int num_empty_cells, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
 {
     output_mutex.lock();
     sudoku game;
@@ -167,7 +166,7 @@ void mincheck_generator_thread(int difficulty, std::mutex &output_mutex, long lo
     {
         std::shuffle(unvisited.begin(), unvisited.end(), game.rng());
         unsigned int unvisited_idx = 0;
-        int num_placed = 81 - difficulty;
+        int num_placed = 81 - num_empty_cells;
         while (num_placed > 0)
         {
             unsigned int visit_idx = unvisited.at(unvisited_idx);
@@ -186,11 +185,11 @@ void mincheck_generator_thread(int difficulty, std::mutex &output_mutex, long lo
         }
         if (game.has_one_clear_solution())
         {
-            board_found(game.board(), t0, difficulty, 0, true, output_mutex, n_games_valid, n_games_produced);
+            board_found(game.board(), t0, num_empty_cells, 0, true, output_mutex, n_games_valid, n_games_produced);
         }
         else
         {
-            board_found(game.board(), t0, difficulty, 0, false, output_mutex, n_games_valid, n_games_produced);
+            board_found(game.board(), t0, num_empty_cells, 0, false, output_mutex, n_games_valid, n_games_produced);
         }
         game.reset();
     }
@@ -199,10 +198,10 @@ void mincheck_generator_thread(int difficulty, std::mutex &output_mutex, long lo
 /**
  * @brief This Sudoku generator fills three independent 3x3 blocks with random numbers.
  *
- * The board is then solved. For each solution the generator tries to clear as many cells as required by the difficulty level.
+ * The board is then solved. For each solution the generator tries to clear as many cells as requested.
  * If enough cells could be cleared the board is valid, otherwise disposed of.
  */
-void prefill_generator_thread(int difficulty, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
+void prefill_generator_thread(int num_empty_cells, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
 {
     static const std::array<uint8_t, 27> DIAGONAL3X3{
         0, 1, 2, 9, 10, 11, 18, 19, 20,
@@ -244,7 +243,7 @@ void prefill_generator_thread(int difficulty, std::mutex &output_mutex, long lon
                       << possible_solution << std::endl;
             // visit cells in random order until all are visited
             // or the desired amount of empty cells is reached
-            int empty_cells = difficulty;
+            int empty_cells = num_empty_cells;
             unsigned int visited_idx = unvisited.size();
             std::shuffle(unvisited.begin(), unvisited.end(), game.rng());
             while (empty_cells > 0 && visited_idx-- > 0)
@@ -263,7 +262,7 @@ void prefill_generator_thread(int difficulty, std::mutex &output_mutex, long lon
             }
             const bool complete = empty_cells == 0;
             {
-                board_found(possible_solution.board(), t0, difficulty, empty_cells, complete, output_mutex, n_games_valid, n_games_produced);
+                board_found(possible_solution.board(), t0, num_empty_cells, empty_cells, complete, output_mutex, n_games_valid, n_games_produced);
             }
         }
         game.reset();
@@ -273,10 +272,10 @@ void prefill_generator_thread(int difficulty, std::mutex &output_mutex, long lon
 /**
  * @brief This Sudoku generator fills three independent 3x3 blocks with random numbers.
  *
- * The board is then solved. For the first solution the generator tries to clear as many cells as required by the difficulty level.
+ * The board is then solved. For the first solution the generator tries to clear as many cells as requested.
  * If enough cells could be cleared the board is valid, otherwise disposed of.
  */
-void prefill_single_generator_thread(int difficulty, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
+void prefill_single_generator_thread(int num_empty_cells, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
 {
     static const std::array<uint8_t, 27> DIAGONAL3X3{
         0, 1, 2, 9, 10, 11, 18, 19, 20,
@@ -311,7 +310,7 @@ void prefill_single_generator_thread(int difficulty, std::mutex &output_mutex, l
 
         // visit cells in random order until all are visited
         // or the desired amount of empty cells is reached
-        int empty_cells = difficulty;
+        int empty_cells = num_empty_cells;
         auto visited_idx = unvisited.size();
         std::shuffle(unvisited.begin(), unvisited.end(), game.rng());
         while (empty_cells > 0 && visited_idx-- > 0)
@@ -329,14 +328,14 @@ void prefill_single_generator_thread(int difficulty, std::mutex &output_mutex, l
             }
         }
         const bool complete = empty_cells == 0;
-        board_found(game.board(), t0, difficulty, empty_cells, complete, output_mutex, n_games_valid, n_games_produced);
+        board_found(game.board(), t0, num_empty_cells, empty_cells, complete, output_mutex, n_games_valid, n_games_produced);
         game.reset();
     }
 }
 
-int generate(int difficulty, unsigned int thread_count, generator_thread_t const &generator)
+int generate(int num_empty_cells, unsigned int thread_count, generator_thread_t const &generator)
 {
-    std::cout << "Generating games with difficulty " << difficulty
+    std::cout << "Generating games with " << num_empty_cells << " empty cells"
               << " in " << thread_count << " thread" << (thread_count == 1 ? "" : "s")
               << " ...\n"
               << "(Press Ctrl+C to break.)" << std::endl;
@@ -349,7 +348,7 @@ int generate(int difficulty, unsigned int thread_count, generator_thread_t const
     for (auto i = 0U; i < thread_count; ++i)
     {
         threads.emplace_back(generator,
-                             difficulty,
+                             num_empty_cells,
                              std::ref(output_mutex),
                              std::ref(n_games_valid),
                              std::ref(n_games_produced));
@@ -369,7 +368,7 @@ void usage()
                  "Without any input, Sudokus will be generated.\n\n"
               << "Examples:\n"
                  "\n"
-                 "Generate Sudokus with difficulty 62, i.e. 62 empty fields, in 4 threads, using the 'prefill' algorithm:\n"
+                 "Generate Sudokus with 62 empty cells in 4 threads, using the 'prefill' algorithm:\n"
                  "\n"
                  "   sudoku -d 62 -T 4 --algorithm prefill\n"
                  "\n"
@@ -385,21 +384,21 @@ void usage()
                  "\n"
                  "       1. Fill three independent 3x3 blocks with random numbers.\n"
                  "       2. Solve the board.\n"
-                 "       3. For each solution clear as many cells as required by the difficulty level.\n"
+                 "       3. For each solution clear as many cells as requested.\n"
                  "          If enough cells could be cleared the board is valid, otherwise disposed of.\n"
                  "\n"
                  "   prefill-single\n"
                  "\n"
                  "       1. Fill three independent 3x3 blocks with random numbers.\n"
                  "       2. Calculate the first solution the board.\n"
-                 "       3. Clear as many cells as required by the difficulty level.\n"
+                 "       3. Clear as many cells as requested.\n"
                  "          If enough cells could be cleared the board is valid, otherwise disposed of.\n"
                  "\n"
                  "   incremental-fill\n"
                  "\n"
                  "       1. [...] TODO\n"
                  "\n"
-                 "Each Sudoku found will be written to a text file named like sudoku-[ISO8601DateTime]-[difficulty] [seq_no].txt with a contents like (`0` denotes an empty field):\n"
+                 "Each Sudoku found will be written to a text file named like sudoku-[ISO8601DateTime]-[empty_cells] [seq_no].txt with a contents like (`0` denotes an empty field):\n"
                  "\n"
                  "   007000000\\\n"
                  "   060000800\\\n"
@@ -429,7 +428,7 @@ int main(int argc, char *argv[])
         {"prefill", &prefill_generator_thread},
         {"mincheck", &mincheck_generator_thread},
         {"incremental-fill", &incremental_fill_generator_thread}};
-    int difficulty{61};
+    int num_empty_cells{61};
     unsigned int thread_count{std::thread::hardware_concurrency()};
     std::string sudoku_filename{};
     std::string board_data{};
@@ -447,8 +446,8 @@ int main(int argc, char *argv[])
              { board_data = val; })
         .reg({"--solve-file"}, argparser::required_argument, [&sudoku_filename](std::string const &val)
              { sudoku_filename = val; })
-        .reg({"-d", "--difficulty"}, argparser::required_argument, [&difficulty](std::string const &val)
-             { difficulty = std::max(25, std::min(std::stoi(val), 64)); })
+        .reg({"-d", "--empty-cells"}, argparser::required_argument, [&num_empty_cells](std::string const &val)
+             { num_empty_cells = std::max(25, std::min(std::stoi(val), 64)); })
         .reg({"-T", "--threads"}, argparser::required_argument, [&thread_count](std::string const &val)
              { thread_count = static_cast<unsigned int>(std::stoi(val)); })
         .reg({"-v", "--verbose"}, argparser::no_argument, [&verbosity](std::string const &)
@@ -506,6 +505,6 @@ int main(int argc, char *argv[])
         return solve(board_data);
     }
 
-    int rc = generate(difficulty, thread_count, generator);
+    int rc = generate(num_empty_cells, thread_count, generator);
     return rc;
 }

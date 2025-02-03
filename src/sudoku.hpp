@@ -282,6 +282,11 @@ public:
         return false;
     }
 
+    bool solve_like_a_human()
+    {
+        // TODO: implement lots of techniques ;-)
+    }
+
     /**
      * @brief Dump board as flattened array to output stream
      *

@@ -379,7 +379,7 @@ int generate(int num_empty_cells, unsigned int thread_count, generator_thread_t 
         thread.join();
     }
     move(16, 0);
-    clrtoeol();  
+    clrtoeol();
     mvprintw(16, 0, "Exiting ...");
     refresh();
     endwin();

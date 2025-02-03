@@ -23,6 +23,7 @@
 #include <atomic>
 #include <csignal>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <iostream>
 #include <fstream>
@@ -44,7 +45,9 @@
 typedef std::function<void(int, std::mutex &, long long &, long long &)> generator_thread_t;
 
 std::atomic<bool> do_quit{false};
+
 #define ATTENTION_PAIR (1)
+#define STATUS_ROW (20)
 
 void signal_handler(int signum)
 {
@@ -79,31 +82,27 @@ int solve(std::string const &board_data)
 
 void about_to_exit()
 {
-    move(16, 0);
+    move(STATUS_ROW, 2);
     clrtoeol();
     attron(COLOR_PAIR(ATTENTION_PAIR));
-    mvprintw(16, 0, " Exiting ... please wait! ");
+    mvprintw(STATUS_ROW, 2, " Exiting ... please be patient! ");
     attroff(COLOR_PAIR(ATTENTION_PAIR));
 }
 
 void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chrono::high_resolution_clock> const &t0, int num_empty_cells, int empty_cells, bool complete, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
 {
     std::lock_guard locker(output_mutex);
-    for (unsigned int row = 0; row < 9; ++row)
+    move(5, 0);
+    for (int i = 0; i < 81; ++i)
     {
-        for (unsigned int col = 0; col < 9; ++col)
-        {
-            char c = board.at(9 * row + col);
-            if (c == '0')
-            {
-                attroff(A_BOLD);
-            }
-            else
-            {
-                attron(A_BOLD);
-            }
-            mvprintw(row + 6, 2 + col * 2, "%c", c);
-        }
+        char c = board.at(i);
+        if (c == '0')
+            c = ' ';
+        int row = i / 9;
+        int col = i % 9;
+        int row_offset = row / 3;
+        int col_offset = 2 * (col / 3);
+        mvaddch(7 + row + row_offset, 4 + (2 * col) + col_offset, c);
     }
     if (complete)
     {
@@ -123,14 +122,14 @@ void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chro
         out.write(board.data(), static_cast<std::streamsize>(board.size()));
         out << std::endl;
         attron(A_BOLD);
-        mvprintw(16, 0, "Game saved to '%s' ...", filename.c_str());
+        mvprintw(STATUS_ROW, 2, "Game saved to '%s' ...", filename.c_str());
     }
     attroff(A_BOLD);
     auto t1 = std::chrono::high_resolution_clock().now();
     auto dt = t1 > t0 ? t1 - t0 : std::chrono::duration<float, std::milli>(1);
     ++n_games_produced;
-    mvprintw(3, 0, "%.3f games/sec", static_cast<float>(n_games_produced) * 1e3f / dt.count());
-    mvprintw(4, 0, "valid / total games: %lld / %lld", n_games_valid, n_games_produced);
+    mvprintw(4, 2, "games/sec          : %.1f ", static_cast<float>(n_games_produced) * 1e3f / dt.count());
+    mvprintw(5, 2, "valid / total games: %lld / %lld", n_games_valid, n_games_produced);
     refresh();
 }
 
@@ -360,9 +359,53 @@ void prefill_single_generator_thread(int num_empty_cells, std::mutex &output_mut
     about_to_exit();
 }
 
+void draw_header()
+{
+    const char *const HEADER = " Sudoku Generator ";
+    int win_height, win_width;
+    getmaxyx(stdscr, win_height, win_width);
+    attron(A_BOLD);
+    mvprintw(0, (win_width - strlen(HEADER)) / 2, HEADER);
+    attroff(A_BOLD);
+}
 
+void draw_sudoku_grid()
+{
+    for (int i = 0; i <= 3; ++i)
+    {
+        mvhline(4 * i + 6, 2, ACS_HLINE, 25);
+    }
+    for (int j = 0; j <= 3; ++j)
+    {
+        mvvline(6, 2 + j * 8, ACS_VLINE, 13);
+    }
+    mvaddch(6, 2, ACS_ULCORNER);
+    mvaddch(6, 26, ACS_URCORNER);
+    mvaddch(18, 2, ACS_LLCORNER);
+    mvaddch(18, 26, ACS_LRCORNER);
+    mvaddch(6, 10, ACS_TTEE);
+    mvaddch(6, 18, ACS_TTEE);
+    mvaddch(18, 10, ACS_BTEE);
+    mvaddch(18, 18, ACS_BTEE);
+    mvaddch(10, 10, ACS_PLUS);
+    mvaddch(10, 18, ACS_PLUS);
+    mvaddch(14, 10, ACS_PLUS);
+    mvaddch(14, 18, ACS_PLUS);
+}
 
-int generate(int num_empty_cells, unsigned int thread_count, generator_thread_t const &generator)
+std::function<void()> redraw;
+
+void resize_handler(int sig)
+{
+    if (sig == SIGWINCH)
+    {
+        endwin();
+        refresh();
+        redraw();
+    }
+}
+
+int generate(int num_empty_cells, unsigned int thread_count, std::string const &algorithm_name, generator_thread_t const &generator)
 {
     initscr();
     cbreak();
@@ -371,12 +414,21 @@ int generate(int num_empty_cells, unsigned int thread_count, generator_thread_t 
     start_color();
     init_pair(ATTENTION_PAIR, COLOR_WHITE, COLOR_RED);
 
-    attron(A_BOLD);
-    mvprintw(0, 0, "== Sudoku Generator ==");
-    attroff(A_BOLD);
-    mvprintw(1, 0, "#empty cells wanted: %d", num_empty_cells);
-    mvprintw(2, 0, "#threads           : %u", thread_count);
-    refresh();
+    redraw = [num_empty_cells, thread_count, algorithm_name]() -> void
+    {
+        clear();
+        border(0, 0, 0, 0, 0, 0, 0, 0);
+        draw_header();
+        mvprintw(1, 2, "#empty cells wanted: %d", num_empty_cells);
+        mvprintw(2, 2, "#threads           : %u", thread_count);
+        mvprintw(3, 2, "algorithm          : %s", algorithm_name.c_str());
+        draw_sudoku_grid();
+        refresh();
+    };
+
+    redraw();
+
+    std::signal(SIGWINCH, resize_handler);
 
     std::vector<std::thread> threads;
     threads.reserve(std::thread::hardware_concurrency());
@@ -395,9 +447,9 @@ int generate(int num_empty_cells, unsigned int thread_count, generator_thread_t 
     {
         thread.join();
     }
-    move(16, 0);
+    move(STATUS_ROW, 2);
     clrtoeol();
-    mvprintw(16, 0, "Exiting ...");
+    mvprintw(STATUS_ROW, 2, "Exiting ...");
     refresh();
     endwin();
     return EXIT_SUCCESS;
@@ -480,6 +532,7 @@ int main(int argc, char *argv[])
     std::string board_data{};
     int verbosity{0};
     generator_thread_t generator = prefill_single_generator_thread;
+    std::string algorithm_name{"prefill-single"};
 
     using argparser = argparser::argparser;
     argparser opt(argc, argv);
@@ -498,11 +551,12 @@ int main(int argc, char *argv[])
              { thread_count = static_cast<unsigned int>(std::stoi(val)); })
         .reg({"-v", "--verbose"}, argparser::no_argument, [&verbosity](std::string const &)
              { ++verbosity; })
-        .reg({"-a", "--algorithm"}, argparser::required_argument, [&ALGORITHMS, &generator](std::string const &val)
+        .reg({"-a", "--algorithm"}, argparser::required_argument, [&ALGORITHMS, &generator, &algorithm_name](std::string const &val)
              {
                 if (ALGORITHMS.find(val) != ALGORITHMS.end())
                 {
-                    generator = ALGORITHMS.at(val);
+                    algorithm_name = val;
+                    generator = ALGORITHMS.at(algorithm_name);
                 }
                 else
                 {
@@ -551,7 +605,7 @@ int main(int argc, char *argv[])
         return solve(board_data);
     }
 
-    int rc = generate(num_empty_cells, thread_count, generator);
+    int rc = generate(num_empty_cells, thread_count, algorithm_name, generator);
 
     return rc;
 }

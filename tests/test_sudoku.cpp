@@ -4,7 +4,7 @@
 #include <string>
 #include <array>
 
-TEST(SudokuText, BasicAssertions)
+TEST(SudokuTest, BasicAssertions)
 {
     for (size_t i = 0; i < 81; ++i)
     {

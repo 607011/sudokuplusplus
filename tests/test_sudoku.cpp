@@ -56,7 +56,7 @@ TEST(SudokuTest, GetColAssertions)
     }
 }
 
-TEST(SudokuTest, GetBlockAssertions)
+TEST(SudokuTest, GetBoxAssertions)
 {
     sudoku game("000280500500000090470300010032010000910008200060000007600000000003000001000906000");
     std::array<std::string, 9> results = {

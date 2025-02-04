@@ -4,7 +4,7 @@
 
 The generator works with a variety of algorithms to produce Sudokus:
 
-`prefill`: This generator first fills three independent 3x3 blocks with random numbers. Then it solves the board. For each solution the generator tries to clear as many cells as required by the difficulty level. If enough cells could be cleared the board is valid, otherwise disposed of.
+`prefill`: This generator first fills three independent 3x3 boxes with random numbers. Then it solves the board. For each solution the generator tries to clear as many cells as required by the difficulty level. If enough cells could be cleared the board is valid, otherwise disposed of.
 
 `prefill-single`: Same as `prefill`, but only the first solution found is used.
 

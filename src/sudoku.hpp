@@ -306,16 +306,16 @@ public:
                                      { return board_.at(static_cast<size_t>(row * 9 + col_idx)); });
     }
 
-    auto get_box(int block_idx)
+    auto get_box(int box_idx)
     {
-        int block_row = (block_idx / 3) * 3;
-        int block_col = (block_idx % 3) * 3;
+        int box_row = (box_idx / 3) * 3;
+        int box_col = (box_idx % 3) * 3;
 
         return std::views::iota(0, 9) |
-               std::views::transform([this, block_row, block_col](int index)
+               std::views::transform([this, box_row, box_col](int index)
                                      {
-                int row = block_row + index / 3;
-                int col = block_col + index % 3;
+                int row = box_row + index / 3;
+                int col = box_col + index % 3;
                 return board_.at(static_cast<size_t>(row * 9 + col)); });
     }
 
@@ -331,16 +331,16 @@ public:
                                      { return candidates_.at((static_cast<size_t>(row * 9 + col_idx))); });
     }
 
-    auto get_candidates_block(int block_idx) const
+    auto get_candidates_box(int box_idx) const
     {
-        int block_row = (block_idx / 3) * 3;
-        int block_col = (block_idx % 3) * 3;
+        int box_row = (box_idx / 3) * 3;
+        int box_col = (box_idx % 3) * 3;
 
         return std::views::iota(0, 9) |
-               std::views::transform([this, block_row, block_col](int index)
+               std::views::transform([this, box_row, box_col](int index)
                                      {
-                int row = block_row + index / 3;
-                int col = block_col + index % 3;
+                int row = box_row + index / 3;
+                int col = box_col + index % 3;
                 return candidates_.at(static_cast<size_t>(row * 9 + col)); });
     }
 

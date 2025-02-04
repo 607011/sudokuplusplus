@@ -225,7 +225,7 @@ void mincheck_generator_thread(int num_empty_cells, std::mutex &output_mutex, lo
 }
 
 /**
- * @brief This Sudoku generator fills three independent 3x3 blocks with random numbers.
+ * @brief This Sudoku generator fills three independent 3x3 boxes with random numbers.
  *
  * The board is then solved. For each solution the generator tries to clear as many cells as requested.
  * If enough cells could be cleared the board is valid, otherwise disposed of.
@@ -478,7 +478,7 @@ void usage()
                  "\n"
                  "   prefill\n"
                  "\n"
-                 "       1. Fill three independent 3x3 blocks with random numbers.\n"
+                 "       1. Fill three independent 3x3 boxes with random numbers.\n"
                  "       2. Solve the board.\n"
                  "       3. For each solution clear as many cells as requested.\n"
                  "          If enough cells could be cleared the board is valid, otherwise disposed of.\n"
@@ -487,7 +487,7 @@ void usage()
                  "\n"
                  "       This is the default algorithm\n"
                  "\n"
-                 "       1. Fill three independent 3x3 blocks with random numbers.\n"
+                 "       1. Fill three independent 3x3 boxes with random numbers.\n"
                  "       2. Calculate the first solution the board.\n"
                  "       3. Clear as many cells as requested.\n"
                  "          If enough cells could be cleared the board is valid, otherwise disposed of.\n"

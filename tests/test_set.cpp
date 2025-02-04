@@ -23,9 +23,9 @@ TEST(SetTest, Subtraction3)
 {
     easy_set<int> rowForbidden = {5, 2, 8};
     easy_set<int> colForbidden = {8, 6};
-    easy_set<int> blockForbidden = {2, 8, 3};
+    easy_set<int> boxForbidden = {2, 8, 3};
     easy_set<int> diffResult = {1, 4, 7, 9};
-    EXPECT_TRUE(ALL_DIGITS - rowForbidden - colForbidden - blockForbidden == diffResult);
+    EXPECT_TRUE(ALL_DIGITS - rowForbidden - colForbidden - boxForbidden == diffResult);
 }
 
 TEST(SetTest, Union)

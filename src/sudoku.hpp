@@ -38,7 +38,6 @@
 #include "easy_set.hpp"
 #include "util.hpp"
 
-
 class sudoku
 {
 public:
@@ -67,12 +66,14 @@ public:
                             ? EMPTY
                             : board_str.at(i);
         }
+        calc_all_candidates();
+        // dump_candidates();
     }
 
     explicit sudoku(board_t const &board)
         : sudoku()
     {
-        this->board_ = board;
+        board_ = board;
     }
 
     void init()
@@ -293,83 +294,54 @@ public:
         return false;
     }
 
-    const auto get_row(int row_idx) const
+    auto get_row(int row_idx) const
     {
         return board_ | std::views::drop(row_idx * 9) | std::views::take(9);
     }
 
-    const auto get_col(int col_idx) const
+    auto get_col(int col_idx) const
     {
         return std::views::iota(0, 9) |
-               std::views::transform([=](int row)
-                                     { return board_[row * 9 + col_idx]; });
+               std::views::transform([this, col_idx](int row)
+                                     { return board_.at(static_cast<size_t>(row * 9 + col_idx)); });
     }
 
-    const auto get_block(int block_idx)
+    auto get_block(int block_idx)
     {
         int block_row = (block_idx / 3) * 3;
         int block_col = (block_idx % 3) * 3;
 
         return std::views::iota(0, 9) |
-               std::views::transform([=](int index)
+               std::views::transform([this, block_row, block_col](int index)
                                      {
                 int row = block_row + index / 3;
                 int col = block_col + index % 3;
-                return board_.at(row * 9 + col); });
+                return board_.at(static_cast<size_t>(row * 9 + col)); });
     }
 
-    const auto get_candidates_row(int row_idx) const
+    auto get_candidates_row(int row_idx) const
     {
         return candidates_ | std::views::drop(row_idx * 9) | std::views::take(9);
     }
 
-    const auto get_candidates_col(int col_idx) const
+    auto get_candidates_col(int col_idx) const
     {
         return std::views::iota(0, 9) |
-               std::views::transform([=](int row)
-                                     { return candidates_[row * 9 + col_idx]; });
+               std::views::transform([this, col_idx](int row)
+                                     { return candidates_.at((static_cast<size_t>(row * 9 + col_idx))); });
     }
 
-    const auto get_candidates_block(int block_idx)
+    auto get_candidates_block(int block_idx) const
     {
         int block_row = (block_idx / 3) * 3;
         int block_col = (block_idx % 3) * 3;
 
         return std::views::iota(0, 9) |
-               std::views::transform([=](int index)
+               std::views::transform([this, block_row, block_col](int index)
                                      {
                 int row = block_row + index / 3;
                 int col = block_col + index % 3;
-                return candidates_.at(row * 9 + col); });
-    }
-
-    void calc_all_candidates()
-    {
-        for (auto candidates : candidates_)
-        {
-            candidates.clear();
-        }
-        std::array<std::optional<easy_set<char>>, 9U> col_forbidden;
-        std::array<std::array<std::optional<easy_set<char>>, 3U>, 3U> block_forbidden;
-        for (int row = 0; row < 9; ++row)
-        {
-            auto row_forbidden = easy_set<char>(std::begin(get_row(row)), std::end(get_row(row)));
-            for (int col = 0; col < 9; ++col)
-            {
-                if (!col_forbidden.at(col).has_value())
-                {
-                    col_forbidden[col] = easy_set<char>(std::begin(get_col(col)), std::end(get_col(col)));
-                }
-                int block_row_idx = row / 3;
-                int block_col_idx = row % 3;
-                if (!block_forbidden.at(block_row_idx).at(block_col_idx).has_value())
-                {
-                    int block_idx = block_row_idx * 3 * 9 + block_col_idx * 3;
-                    auto bforbidden = easy_set<char>(std::begin(get_block(block_idx)), std::end(get_block(block_idx)));
-                    // std::set_difference(std::begin(bforbidden), std::end(bforbidden),std::begin(EMPTY_SET), std::end(EMPTY_SET), std::begin(block_forbidden[block_row_idx][block_col_idx]));
-                }
-            }
-        }
+                return candidates_.at(static_cast<size_t>(row * 9 + col)); });
     }
 
     bool solve_like_a_human()
@@ -473,7 +445,7 @@ public:
      * @param col the cell's column
      * @param num the cell's new value
      */
-    inline void set(unsigned int row, unsigned int col, char num)
+    inline void set(size_t row, size_t col, char num)
     {
         board_[row * 9 + col] = num;
     }
@@ -485,10 +457,14 @@ public:
      * @param col the cell's column
      * @return char cell contents
      */
-    inline char get(unsigned int row, unsigned int col) const
+    inline char get(size_t row, size_t col) const
     {
         return board_.at(row * 9 + col);
     }
+
+    static inline size_t get_row_for(size_t idx) { return idx / 9; }
+    static inline size_t get_col_for(size_t idx) { return idx % 9; }
+    static inline size_t get_block_for(size_t idx) { return 3 * (get_row_for(idx) / 3) + get_col_for(idx) / 3; }
 
     /**
      * @brief Check if placing a number at the designated destinaton is safe.
@@ -502,11 +478,11 @@ public:
      * @return true if safe
      * @return false otherwise
      */
-    bool is_safe(unsigned int row, unsigned int col, char num) const
+    bool is_safe(size_t row, size_t col, char num) const
     {
         // check row and column
-        unsigned int col_idx = col;
-        for (unsigned int row_idx = row * 9; row_idx < row * 9 + 9; ++row_idx)
+        size_t col_idx = col;
+        for (size_t row_idx = row * 9; row_idx < row * 9 + 9; ++row_idx, col_idx += 9)
         {
             if (board_.at(row_idx) == num)
             {
@@ -516,14 +492,13 @@ public:
             {
                 return false;
             }
-            col_idx += 9;
         }
         // check 3x3 box
         row -= row % 3;
         col -= col % 3;
-        for (unsigned int i = row; i < row + 3; ++i)
+        for (size_t i = row; i < row + 3; ++i)
         {
-            for (unsigned int j = col; j < col + 3; ++j)
+            for (size_t j = col; j < col + 3; ++j)
             {
                 if (get(i, j) == num)
                 {
@@ -534,10 +509,10 @@ public:
         return true;
     }
 
-    inline bool is_safe(unsigned int idx, char num) const
+    inline bool is_safe(size_t idx, char num) const
     {
-        unsigned int row = idx / 9;
-        unsigned int col = idx % 9;
+        size_t row = get_row_for(idx);
+        size_t col = get_col_for(idx);
         return is_safe(row, col, num);
     }
 
@@ -550,6 +525,7 @@ public:
     static constexpr char EMPTY = '0';
 
     static const easy_set<char> EMPTY_SET;
+    static const easy_set<char> ALL_DIGITS;
 
 private:
     /**
@@ -558,7 +534,7 @@ private:
      */
     board_t board_;
 
-    std::array<easy_set<char>, 81U> candidates_;
+    std::array<easy_set<char>, 81> candidates_;
 
     /**
      * @brief Holds all solutions to the current game.
@@ -583,6 +559,66 @@ private:
      * TODO: Exchange MT19937 for SFMT (http://www.math.sci.hiroshima-u.ac.jp/m-mat/MT/SFMT/)
      */
     std::mt19937 rng_;
+
+private: // methods
+    void calc_all_candidates()
+    {
+        for (auto candidates : candidates_)
+        {
+            candidates.clear();
+        }
+        std::array<easy_set<char>, 9U> row_forbidden;
+        std::array<easy_set<char>, 9U> col_forbidden;
+        std::array<easy_set<char>, 9U> block_forbidden;
+        for (size_t i = 0; i < 9; ++i)
+        {
+            const auto row_data = get_row((int)i);
+            row_forbidden[i] = easy_set<char>(std::begin(row_data), std::end(row_data)) - EMPTY_SET;
+            const auto col_data = get_col((int)i);
+            col_forbidden[i] = easy_set<char>(std::begin(col_data), std::end(col_data)) - EMPTY_SET;
+            const auto block_data = get_block((int)i);
+            block_forbidden[i] = easy_set<char>(std::begin(block_data), std::end(block_data)) - EMPTY_SET;
+        }
+        for (size_t i = 0; i < candidates_.size(); ++i)
+        {
+            size_t row = get_row_for(i);
+            size_t col = get_col_for(i);
+            size_t block = get_block_for(i);
+            if (get(row, col) == EMPTY)
+            {
+                candidates_[i] =
+                    ALL_DIGITS -
+                    row_forbidden.at(row) -
+                    col_forbidden.at(col) -
+                    block_forbidden.at(block);
+            }
+        }
+    }
+
+    static void dump_set(easy_set<char> const &s)
+    {
+        for (char e : s)
+        {
+            std::cout << ' ' << e;
+        }
+        std::cout << std::endl;
+    }
+
+    void dump_candidates()
+    {
+        for (int row = 0; row < 9; ++row)
+        {
+            for (int col = 0; col < 9; ++col)
+            {
+                std::cout << "(" << row << "," << col << ") ";
+                for (char candidate : candidates_.at(static_cast<size_t>(row * 9 + col)))
+                {
+                    std::cout << ' ' << candidate;
+                }
+                std::cout << std::endl;
+            }
+        }
+    }
 };
 
 std::ostream &operator<<(std::ostream &, const sudoku::board_t &);

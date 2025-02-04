@@ -25,6 +25,7 @@
 #include "sudoku.hpp"
 
 const easy_set<char> sudoku::EMPTY_SET = {'0'};
+const easy_set<char> sudoku::ALL_DIGITS = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
 
 std::ostream &operator<<(std::ostream &os, const sudoku::board_t &board)
 {

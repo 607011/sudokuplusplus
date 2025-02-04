@@ -4,6 +4,16 @@
 #include <string>
 #include <array>
 
+TEST(SudokuText, BasicAssertions)
+{
+    for (size_t i = 0; i < 81; ++i)
+    {
+        EXPECT_EQ(sudoku::get_row_for(i), i / 9);
+        EXPECT_EQ(sudoku::get_col_for(i), i % 9);
+        EXPECT_EQ(sudoku::get_block_for(i), 3 * (i / 9 / 3) + (i % 9) / 3);
+    }
+}
+
 TEST(SudokuTest, GetRowAssertions)
 {
     sudoku game("000280500500000090470300010032010000910008200060000007600000000003000001000906000");

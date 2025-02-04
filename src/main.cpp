@@ -89,13 +89,13 @@ void about_to_exit()
     attroff(COLOR_PAIR(ATTENTION_PAIR));
 }
 
-void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chrono::high_resolution_clock> const &t0, int num_empty_cells, int empty_cells, bool complete, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
+void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chrono::high_resolution_clock> const &t0, int num_empty_cells, bool complete, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
 {
     std::lock_guard locker(output_mutex);
     move(5, 0);
     for (int i = 0; i < 81; ++i)
     {
-        char c = board.at(i);
+        char c = board.at((size_t)i);
         if (c == '0')
             c = ' ';
         int row = i / 9;
@@ -168,7 +168,7 @@ void incremental_fill_generator_thread(int num_empty_cells, std::mutex &output_m
         }
         const bool complete = empty_cells == 0;
         {
-            board_found(game.board(), t0, num_empty_cells, empty_cells, complete, output_mutex, n_games_valid, n_games_produced);
+            board_found(game.board(), t0, num_empty_cells, complete, output_mutex, n_games_valid, n_games_produced);
         }
     }
     about_to_exit();
@@ -213,11 +213,11 @@ void mincheck_generator_thread(int num_empty_cells, std::mutex &output_mutex, lo
         }
         if (game.has_one_clear_solution())
         {
-            board_found(game.board(), t0, num_empty_cells, 0, true, output_mutex, n_games_valid, n_games_produced);
+            board_found(game.board(), t0, num_empty_cells, true, output_mutex, n_games_valid, n_games_produced);
         }
         else
         {
-            board_found(game.board(), t0, num_empty_cells, 0, false, output_mutex, n_games_valid, n_games_produced);
+            board_found(game.board(), t0, num_empty_cells, false, output_mutex, n_games_valid, n_games_produced);
         }
         game.reset();
     }
@@ -288,7 +288,7 @@ void prefill_generator_thread(int num_empty_cells, std::mutex &output_mutex, lon
             }
             const bool complete = empty_cells == 0;
             {
-                board_found(possible_solution.board(), t0, num_empty_cells, empty_cells, complete, output_mutex, n_games_valid, n_games_produced);
+                board_found(possible_solution.board(), t0, num_empty_cells, complete, output_mutex, n_games_valid, n_games_produced);
             }
         }
         game.reset();
@@ -353,7 +353,7 @@ void prefill_single_generator_thread(int num_empty_cells, std::mutex &output_mut
             }
         }
         const bool complete = empty_cells == 0;
-        board_found(game.board(), t0, num_empty_cells, empty_cells, complete, output_mutex, n_games_valid, n_games_produced);
+        board_found(game.board(), t0, num_empty_cells, complete, output_mutex, n_games_valid, n_games_produced);
         game.reset();
     }
     about_to_exit();
@@ -362,10 +362,11 @@ void prefill_single_generator_thread(int num_empty_cells, std::mutex &output_mut
 void draw_header()
 {
     const char *const HEADER = " Sudoku Generator ";
-    int win_height, win_width;
+    [[maybe_unused]] int win_height;
+    int win_width;
     getmaxyx(stdscr, win_height, win_width);
     attron(A_BOLD);
-    mvprintw(0, (win_width - strlen(HEADER)) / 2, HEADER);
+    mvprintw(0, (win_width - (int)strlen(HEADER)) / 2, HEADER);
     attroff(A_BOLD);
 }
 
@@ -537,21 +538,21 @@ int main(int argc, char *argv[])
     using argparser = argparser::argparser;
     argparser opt(argc, argv);
     opt
-        .reg({"-?", "--help"}, argparser::no_argument, [](std::string const &)
+        .reg({"-?", "--help"}, argparser::no_argument, "Show this help", [](std::string const &)
              {
                 usage();
                 exit(EXIT_SUCCESS); })
-        .reg({"--solve"}, argparser::required_argument, [&board_data](std::string const &val)
+        .reg({"--solve"}, argparser::required_argument, "Solve a given Sudoku", [&board_data](std::string const &val)
              { board_data = val; })
-        .reg({"--solve-file"}, argparser::required_argument, [&sudoku_filename](std::string const &val)
+        .reg({"--solve-file"}, "FILE", argparser::required_argument, "Solve a Sudoku contained in FILE", [&sudoku_filename](std::string const &val)
              { sudoku_filename = val; })
-        .reg({"-d", "--empty-cells"}, argparser::required_argument, [&num_empty_cells](std::string const &val)
+        .reg({"-d", "--empty-cells"}, "NUM", argparser::required_argument, "Produce Sudokus with NUM cells", [&num_empty_cells](std::string const &val)
              { num_empty_cells = std::max(25, std::min(std::stoi(val), 64)); })
-        .reg({"-T", "--threads"}, argparser::required_argument, [&thread_count](std::string const &val)
+        .reg({"-T", "--threads"}, "NUM", argparser::required_argument, "Run generators in NUM threads", [&thread_count](std::string const &val)
              { thread_count = static_cast<unsigned int>(std::stoi(val)); })
-        .reg({"-v", "--verbose"}, argparser::no_argument, [&verbosity](std::string const &)
+        .reg({"-v", "--verbose"}, argparser::no_argument, "Increase verbosity of output", [&verbosity](std::string const &)
              { ++verbosity; })
-        .reg({"-a", "--algorithm"}, argparser::required_argument, [&ALGORITHMS, &generator, &algorithm_name](std::string const &val)
+        .reg({"-a", "--algorithm"}, "ALGO", argparser::required_argument, "Use algorithm ALGO to generate Sudokus", [&ALGORITHMS, &generator, &algorithm_name](std::string const &val)
              {
                 if (ALGORITHMS.find(val) != ALGORITHMS.end())
                 {

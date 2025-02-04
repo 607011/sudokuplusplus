@@ -10,7 +10,7 @@ TEST(SudokuText, BasicAssertions)
     {
         EXPECT_EQ(sudoku::get_row_for(i), i / 9);
         EXPECT_EQ(sudoku::get_col_for(i), i % 9);
-        EXPECT_EQ(sudoku::get_block_for(i), 3 * (i / 9 / 3) + (i % 9) / 3);
+        EXPECT_EQ(sudoku::get_box_for(i), 3 * (i / 9 / 3) + (i % 9) / 3);
     }
 }
 
@@ -71,7 +71,7 @@ TEST(SudokuTest, GetBlockAssertions)
         "000001000"};
     for (int i = 0; i < 9; ++i)
     {
-        auto col = game.get_block(i);
+        auto col = game.get_box(i);
         std::string result(std::begin(col), std::end(col));
         EXPECT_STREQ(result.c_str(), results.at(i).c_str());
     }

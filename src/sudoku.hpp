@@ -47,7 +47,7 @@ public:
     {
         Row,
         Column,
-        Block
+        Box
     };
 
     sudoku()
@@ -306,7 +306,7 @@ public:
                                      { return board_.at(static_cast<size_t>(row * 9 + col_idx)); });
     }
 
-    auto get_block(int block_idx)
+    auto get_box(int block_idx)
     {
         int block_row = (block_idx / 3) * 3;
         int block_col = (block_idx % 3) * 3;
@@ -464,7 +464,7 @@ public:
 
     static inline size_t get_row_for(size_t idx) { return idx / 9; }
     static inline size_t get_col_for(size_t idx) { return idx % 9; }
-    static inline size_t get_block_for(size_t idx) { return 3 * (get_row_for(idx) / 3) + get_col_for(idx) / 3; }
+    static inline size_t get_box_for(size_t idx) { return 3 * (get_row_for(idx) / 3) + get_col_for(idx) / 3; }
 
     /**
      * @brief Check if placing a number at the designated destinaton is safe.
@@ -569,28 +569,28 @@ private: // methods
         }
         std::array<easy_set<char>, 9U> row_forbidden;
         std::array<easy_set<char>, 9U> col_forbidden;
-        std::array<easy_set<char>, 9U> block_forbidden;
+        std::array<easy_set<char>, 9U> box_forbidden;
         for (size_t i = 0; i < 9; ++i)
         {
             const auto row_data = get_row((int)i);
             row_forbidden[i] = easy_set<char>(std::begin(row_data), std::end(row_data)) - EMPTY_SET;
             const auto col_data = get_col((int)i);
             col_forbidden[i] = easy_set<char>(std::begin(col_data), std::end(col_data)) - EMPTY_SET;
-            const auto block_data = get_block((int)i);
-            block_forbidden[i] = easy_set<char>(std::begin(block_data), std::end(block_data)) - EMPTY_SET;
+            const auto box_data = get_box((int)i);
+            box_forbidden[i] = easy_set<char>(std::begin(box_data), std::end(box_data)) - EMPTY_SET;
         }
         for (size_t i = 0; i < candidates_.size(); ++i)
         {
             size_t row = get_row_for(i);
             size_t col = get_col_for(i);
-            size_t block = get_block_for(i);
+            size_t box = get_box_for(i);
             if (get(row, col) == EMPTY)
             {
                 candidates_[i] =
                     ALL_DIGITS -
                     row_forbidden.at(row) -
                     col_forbidden.at(col) -
-                    block_forbidden.at(block);
+                    box_forbidden.at(box);
             }
         }
     }

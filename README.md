@@ -4,7 +4,7 @@
 
 The generator works with a variety of algorithms to produce Sudokus:
 
-`prefill`: This generator first fills three independent 3x3 boxes with random numbers. Then it solves the board. For each solution the generator tries to clear as many cells as required by the difficulty level. If enough cells could be cleared the board is valid, otherwise disposed of.
+`prefill`: This generator first fills three independent 3x3 boxes with random numbers. Then it solves the board. For each solution the generator tries to clear as many cells as requested. If enough cells could be cleared the board is valid, otherwise disposed of.
 
 `prefill-single`: Same as `prefill`, but only the first solution found is used.
 
@@ -97,11 +97,10 @@ This will generate `sudoku.exe` and `sudoku2svg.exe`.
 ## Generate sudokus
 
 ```
-sudoku -d [difficulty] -T [thread_count]
+sudoku -d [N] -T [thread_count]
 ```
 
-where `difficulty` is an integer number between 25 and 64, meaning fields left empty. The more fields are left empty the more difficult the Sudoku tendentially is, [but not necessarily](https://github.com/607011/sudokuplusplus/issues/3).
-`thread_count` determines the number of games being generated concurrently. If not given, the number of CPU cores will be used.
+where `N` is an integer number between 25 and 64, meaning fields left empty. `thread_count` determines the number of games being generated concurrently. If not given, the number of CPU cores will be used.
 
 Each Sudoku found will be written to a text file named like sudoku-[ISO8601DateTime]-[difficulty] [seq_no].txt with a contents like (`0` denotes an empty field):
 
@@ -130,3 +129,9 @@ You can convert a Sudoku file to SVG with `sudoku2svg`, e.g.:
 ```
 ./sudoku2svg sudoku-20230318T160133-61.txt sudoku.svg
 ```
+
+
+## Work In Progress
+
+I'm working on a human-like solver that tries to solve a Sudoku game by applying a variety of techniques like "obvious/hidden singles/pairs", "pointing pairs", "X-wing" an so on. That'll be a lot of work …
+

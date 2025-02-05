@@ -27,7 +27,7 @@
 const easy_set<char> sudoku::EMPTY_SET = {'0'};
 const easy_set<char> sudoku::ALL_DIGITS = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
 
-sudoku::sudoku()
+sudoku::sudoku(void)
 {
     init();
     reset();
@@ -71,12 +71,12 @@ void sudoku::reset_resolutions(void)
     resolutions_ = {{
         {"obvious single", 0},
         {"hidden single", 0},
-        {"obvious pair", 0},  // not implemented
-        {"hidden pair", 0},   // not implemented
-        {"pointing pair", 0}, // not implemented
-        {"skyscraper", 0},    // not implemented
-        {"triple", 0}         // not implemented
-        // and many, many more ...
+        {"obvious pair", 0},
+        {"hidden pair", 0},   // not implemented yet
+        {"pointing pair", 0}, // not implemented yet
+        {"skyscraper", 0},    // not implemented yet
+        {"triple", 0}         // not implemented yet
+        // and many, many more to come ...
     }};
 }
 
@@ -361,13 +361,13 @@ int sudoku::resolve_pair(sudoku::pair_result_t const &result)
     {
         const int row = result.cell1.row;
         auto row_notes = get_notes_for_row(row);
-        for (int col = 0; col < row_notes.size(); ++col)
+        for (int col = 0; col < (int)row_notes.size(); ++col)
         {
             if ((result.cell1.row == row && result.cell1.col == col) ||
                 (result.cell2.row == row && result.cell2.col == col))
                 continue;
-            removed_count += row_notes[col].size() - (row_notes[col] - result.pair).size();
-            row_notes[col] -= result.pair;
+            removed_count += static_cast<int>(row_notes[(size_t)col].size() - (row_notes[(size_t)col] - result.pair).size());
+            row_notes[(size_t)col] -= result.pair;
         }
         break;
     }
@@ -375,12 +375,12 @@ int sudoku::resolve_pair(sudoku::pair_result_t const &result)
     {
         const int col = result.cell1.col;
         auto row_notes = get_notes_for_col(col);
-        for (int row = 0; row < row_notes.size(); ++row)
+        for (int row = 0; row < (int)row_notes.size(); ++row)
         {
             if ((result.cell1.row == row && result.cell1.col == col) ||
                 (result.cell2.row == row && result.cell2.col == col))
                 continue;
-            removed_count += row_notes[row].size() - (row_notes[row] - result.pair).size();
+            removed_count += static_cast<int>(row_notes[row].size() - (row_notes[row] - result.pair).size());
             row_notes[row] -= result.pair;
         }
         break;
@@ -399,7 +399,7 @@ int sudoku::resolve_pair(sudoku::pair_result_t const &result)
                 if ((result.cell1.row == row && result.cell1.col == col) ||
                     (result.cell2.row == row && result.cell2.col == col))
                     continue;
-                size_t box_idx = static_cast<size_t>(row_offset * 3 + col_offset);
+                int box_idx = row_offset * 3 + col_offset;
                 removed_count += box_notes[box_idx].size() - (box_notes[box_idx] - result.pair).size();
                 box_notes[box_idx] -= result.pair;
             }
@@ -415,7 +415,7 @@ int sudoku::resolve_pair(sudoku::pair_result_t const &result)
 std::optional<sudoku::pair_result_t> sudoku::find_obvious_pair_in_unit(unit_t unit_type, int unit_index)
 {
     auto unit = get_notes_for_unit(unit_type, unit_index);
-    std::cout << "find_obvious_pair_in_unit(" << unit_type << ", " << unit_index << ")\n";
+    std::cout << "find_obvious_pair_in_unit(\"" << UNIT_STRINGS.at(unit_type) << "\", " << unit_index << ")\n";
     for (int i = 0; i < 9; ++i)
     {
         for (int j = i + 1; j < 9; ++j)
@@ -446,8 +446,8 @@ std::optional<sudoku::pair_result_t> sudoku::find_obvious_pair_in_unit(unit_t un
             }
             case Box:
             {
-                int row_start = 3 * (unit_index / 3);
-                int col_start = 3 * (unit_index % 3);
+                const int row_start = 3 * (unit_index / 3);
+                const int col_start = 3 * (unit_index % 3);
                 row1 = row_start + i / 3;
                 col1 = col_start + i % 3;
                 row2 = row_start + j / 3;
@@ -461,7 +461,8 @@ std::optional<sudoku::pair_result_t> sudoku::find_obvious_pair_in_unit(unit_t un
                 {row1, col1},
                 {row2, col2},
                 pair,
-                unit_type};
+                unit_type,
+                0};
         }
     }
     return std::nullopt;
@@ -474,6 +475,121 @@ std::optional<sudoku::pair_result_t> sudoku::eliminate_obvious_pair(void)
         for (int unit_index = 0; unit_index < 9; ++unit_index)
         {
             auto result = find_obvious_pair_in_unit(unit_type, unit_index);
+            if (result)
+            {
+                result->removed_count = resolve_pair(result.value());
+                if (result->removed_count > 0)
+                    return result;
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<sudoku::pair_result_t> sudoku::find_hidden_pair_in_unit(unit_t unit_type, int unit_index)
+{
+    std::cout << "find_hidden_pair_in_unit(\"" << UNIT_STRINGS.at(unit_type) << "\", " << unit_index << ")\n";
+    auto unit = get_notes_for_unit(unit_type, unit_index);
+
+    // count occurrences of candidates
+    std::array<int, 9> candidate_count{0};
+    for (auto candidates : unit)
+    {
+        if (candidates.empty())
+            continue;
+        for (char candidate : candidates)
+        {
+            size_t idx = static_cast<size_t>(candidate - '1');
+            ++candidate_count[idx];
+        }
+    }
+    // select only those that occur twice
+    std::vector<int> potential_pairs;
+    potential_pairs.reserve(9);
+    for (int i = 0; i < (int)candidate_count.size(); ++i)
+    {
+        if (candidate_count.at((size_t)i) == 2)
+        {
+            potential_pairs.push_back(i);
+        }
+    }
+    if (potential_pairs.size() < 2)
+        return std::nullopt;
+
+    // the nested loop is a decent way to iterate over all combinations of digit pairs
+    for (int i = 0; i < 9; ++i)
+    {
+        for (int j = i + 1; j < 9; ++j)
+        {
+            easy_set<char> pair;
+            pair.emplace(static_cast<char>(potential_pairs.at(0) + '1'));
+            pair.emplace(static_cast<char>(potential_pairs.at(1) + '1'));
+            std::vector<int> pair_cells;
+            bool other_candidates_present = false;
+            for (int k = 0; k < (int)unit.size(); ++k)
+            {
+                easy_set<char> cell_candidates = unit.at((size_t)k);
+                if (cell_candidates.empty() || pair.is_subset_of(cell_candidates))
+                    continue;
+                pair_cells.push_back(k);
+                if (cell_candidates.size() > 2)
+                {
+                    other_candidates_present = true;
+                }
+            }
+            if (pair_cells.size() != 2 || !other_candidates_present)
+                continue;
+
+            int cell1_index = pair_cells.at(0);
+            int cell2_index = pair_cells.at(1);
+            int row1, col1, row2, col2;
+            switch (unit_type)
+            {
+            case Row:
+            {
+                row1 = row2 = unit_index;
+                col1 = cell1_index;
+                col2 = cell2_index;
+                break;
+            }
+            case Column:
+            {
+                row1 = cell1_index;
+                row2 = cell2_index;
+                col1 = col2 = unit_index;
+                break;
+            }
+            case Box:
+            {
+                const int row_start = 3 * (unit_index / 3);
+                const int col_start = 3 * (unit_index % 3);
+                row1 = row_start + i / 3;
+                col1 = col_start + i % 3;
+                row2 = row_start + j / 3;
+                col2 = col_start + j % 3;
+                break;
+            }
+            default:
+                break;
+            }
+            return pair_result_t{
+                {row1, col1},
+                {row2, col2},
+                pair,
+                unit_type,
+                0};
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<sudoku::pair_result_t> sudoku::eliminate_hidden_pair(void)
+{
+    for (unit_t unit_type : ALL_UNITS)
+    {
+        for (int unit_index = 0; unit_index < 9; ++unit_index)
+        {
+            auto result = find_hidden_pair_in_unit(unit_type, unit_index);
             if (result)
             {
                 result->removed_count = resolve_pair(result.value());
@@ -525,6 +641,20 @@ bool sudoku::next_step(void)
             print_board();
             progress_made = true;
             resolutions_["obvious pair"] += result->removed_count;
+        }
+    }
+    if (!progress_made)
+    {
+        auto result = eliminate_hidden_pair();
+        if (result)
+        {
+            std::cout << "hidden pair (" << *(result->pair.begin()) << ' ' << *(std::next(result->pair.begin())) << ") found at ("
+                      << result->cell1.row << ',' << result->cell1.col << ' '
+                      << result->cell2.row << ',' << result->cell2.col << ")\n";
+
+            print_board();
+            progress_made = true;
+            resolutions_["hidden pair"] += result->removed_count;
         }
     }
     return !is_solved();
@@ -598,7 +728,7 @@ void sudoku::dump_set(easy_set<char> const &s)
     std::cout << std::endl;
 }
 
-void sudoku::dump_candidates()
+void sudoku::dump_candidates(void)
 {
     for (int row = 0; row < 9; ++row)
     {
@@ -624,9 +754,9 @@ void sudoku::dump(std::ostream &os) const
     os.write(board_.data(), static_cast<std::streamsize>(board_.size()));
 }
 
-void sudoku::print_board() const
+void sudoku::print_board(void) const
 {
-    for (size_t row = 0; row < 9; ++row)
+    for (int row = 0; row < 9; ++row)
     {
         for (char digit : get_row(row))
         {
@@ -641,7 +771,7 @@ void sudoku::print_board() const
  *
  * @return int number of empty cells
  */
-int sudoku::empty_count() const
+int sudoku::empty_count(void) const
 {
     return static_cast<int>(std::count(board_.begin(), board_.end(), EMPTY));
 }
@@ -727,7 +857,7 @@ char sudoku::at(int row, int col) const
  *
  * @return board_t const&
  */
-sudoku::board_t const &sudoku::board() const
+sudoku::board_t const &sudoku::board(void) const
 {
     return board_;
 }
@@ -737,13 +867,13 @@ sudoku::board_t const &sudoku::board() const
  *
  * @return std::mt19937&
  */
-std::mt19937 &sudoku::rng()
+std::mt19937 &sudoku::rng(void)
 {
     return rng_;
 }
 
-int sudoku::get_row_for(size_t idx) { return idx / 9; }
-int sudoku::get_col_for(size_t idx) { return idx % 9; }
+int sudoku::get_row_for(size_t idx) { return static_cast<int>(idx / 9); }
+int sudoku::get_col_for(size_t idx) { return static_cast<int>(idx % 9); }
 int sudoku::get_box_for(size_t idx) { return 3 * (get_row_for(idx) / 3) + get_col_for(idx) / 3; }
 size_t sudoku::index_for(int row, int col) { return static_cast<size_t>(row * 9 + col); }
 
@@ -759,17 +889,17 @@ size_t sudoku::index_for(int row, int col) { return static_cast<size_t>(row * 9 
  * @return true if safe
  * @return false otherwise
  */
-bool sudoku::is_safe(size_t row, size_t col, char digit) const
+bool sudoku::is_safe(int row, int col, char digit) const
 {
     // check row and column
-    size_t col_idx = col;
-    for (size_t row_idx = row * 9; row_idx < row * 9 + 9; ++row_idx, col_idx += 9)
+    int col_idx = col;
+    for (int row_idx = row * 9; row_idx < row * 9 + 9; ++row_idx, col_idx += 9)
     {
-        if (board_.at(row_idx) == digit)
+        if (board_.at((size_t)row_idx) == digit)
         {
             return false;
         }
-        if (board_.at(col_idx) == digit)
+        if (board_.at((size_t)col_idx) == digit)
         {
             return false;
         }
@@ -777,9 +907,9 @@ bool sudoku::is_safe(size_t row, size_t col, char digit) const
     // check 3x3 box
     row -= row % 3;
     col -= col % 3;
-    for (size_t i = row; i < row + 3; ++i)
+    for (int i = row; i < row + 3; ++i)
     {
-        for (size_t j = col; j < col + 3; ++j)
+        for (int j = col; j < col + 3; ++j)
         {
             if (get(i, j) == digit)
             {
@@ -792,8 +922,8 @@ bool sudoku::is_safe(size_t row, size_t col, char digit) const
 
 bool sudoku::is_safe(size_t idx, char digit) const
 {
-    size_t row = get_row_for(idx);
-    size_t col = get_col_for(idx);
+    int row = get_row_for(idx);
+    int col = get_col_for(idx);
     return is_safe(row, col, digit);
 }
 

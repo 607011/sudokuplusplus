@@ -73,8 +73,12 @@ public:
     } pair_result_t;
 
     const std::array<unit_t, 3> ALL_UNITS = {Row, Column, Box};
+    const std::unordered_map<unit_t, std::string> UNIT_STRINGS = {
+        {Row, "row"},
+        {Column, "column"},
+        {Box, "box"}};
 
-    sudoku();
+    sudoku(void);
     explicit sudoku(std::string const &board_str);
     explicit sudoku(board_t const &board);
     void init(void);
@@ -125,7 +129,7 @@ public:
      */
     bool has_one_clear_solution(void);
 
-    void random_fill();
+    void random_fill(void);
 
     /**
      * @brief Solve Sudoku.
@@ -144,7 +148,7 @@ public:
      * @param row_idx
      * @return iterator over the row's cells
      */
-    auto get_row(int row_idx) const
+    std::ranges::subrange<board_t::const_iterator> get_row(int row_idx) const
     {
         return board_ | std::views::drop(row_idx * 9) | std::views::take(9);
     }
@@ -158,7 +162,7 @@ public:
     auto get_col(int col_idx) const
     {
         return std::views::iota(0, 9) |
-               std::views::transform([this, col_idx](int row)
+               std::views::transform([this, col_idx](int row) -> char
                                      { return board_.at(static_cast<size_t>(row * 9 + col_idx)); });
     }
 
@@ -168,17 +172,28 @@ public:
      * @param box_idx
      * @return iterator over the box's cells
      */
+    auto get_box(int box_idx) const
+    {
+        const int box_row = (box_idx / 3) * 3;
+        const int box_col = (box_idx % 3) * 3;
+        return std::views::iota(0, 9) |
+               std::views::transform([this, box_row, box_col](int index) -> char
+                                     {
+                const int row = box_row + index / 3;
+                const int col = box_col + index % 3;
+                return board_.at(static_cast<size_t>(row * 9 + col)); });
+    }
+
     auto get_box(int box_idx)
     {
-        int box_row = (box_idx / 3) * 3;
-        int box_col = (box_idx % 3) * 3;
-
+        const int box_row = (box_idx / 3) * 3;
+        const int box_col = (box_idx % 3) * 3;
         return std::views::iota(0, 9) |
-               std::views::transform([this, box_row, box_col](int index)
+               std::views::transform([this, box_row, box_col](int index) -> char &
                                      {
-                int row = box_row + index / 3;
-                int col = box_col + index % 3;
-                return board_.at(static_cast<size_t>(row * 9 + col)); });
+                const int row = box_row + index / 3;
+                const int col = box_col + index % 3;
+                return board_[static_cast<size_t>(row * 9 + col)]; });
     }
 
     /**
@@ -200,7 +215,7 @@ public:
      */
     std::span<easy_set<char>, 9> get_notes_for_row(int row_idx)
     {
-        return std::span<easy_set<char>, 9>{&notes_[row_idx * 9], 9};
+        return std::span<easy_set<char>, 9>{&notes_[static_cast<size_t>(row_idx * 9)], 9};
     }
 
     /**
@@ -212,7 +227,7 @@ public:
     auto get_notes_for_col(int col_idx) const
     {
         return std::views::iota(0, 9) |
-               std::views::transform([this, col_idx](int row)
+               std::views::transform([this, col_idx](int row) -> easy_set<char> const &
                                      { return notes_.at((static_cast<size_t>(row * 9 + col_idx))); });
     }
 
@@ -240,7 +255,7 @@ public:
         const int box_row = (box_idx / 3) * 3;
         const int box_col = (box_idx % 3) * 3;
         return std::views::iota(0, 9) |
-               std::views::transform([this, box_row, box_col](int index)
+               std::views::transform([this, box_row, box_col](int index) -> easy_set<char> const &
                                      {
                 int row = box_row + index / 3;
                 int col = box_col + index % 3;
@@ -257,11 +272,12 @@ public:
     {
         const int box_row = (box_idx / 3) * 3;
         const int box_col = (box_idx % 3) * 3;
-        return std::views::iota(0, 9) | std::views::transform([this, box_row, box_col](int index) -> easy_set<char> &
-                                                              {
+        return std::views::iota(0, 9) |
+               std::views::transform([this, box_row, box_col](int index) -> easy_set<char> &
+                                     {
                 int row = box_row + index / 3;
                 int col = box_col + index % 3;
-                return notes_[row * 9 + col]; });
+                return notes_[static_cast<size_t>(row * 9 + col)]; });
     }
 
     /**
@@ -278,11 +294,13 @@ public:
     int resolve_pair(pair_result_t const &result);
     std::optional<pair_result_t> find_obvious_pair_in_unit(unit_t unit_type, int unit_index);
     std::optional<pair_result_t> eliminate_obvious_pair(void);
+    std::optional<pair_result_t> find_hidden_pair_in_unit(unit_t unit_type, int unit_index);
+    std::optional<pair_result_t> eliminate_hidden_pair(void);
     bool next_step(void);
-    bool solve_like_a_human(int&);
+    bool solve_like_a_human(int &);
     void calc_all_candidates(void);
     static void dump_set(easy_set<char> const &s);
-    void dump_candidates();
+    void dump_candidates(void);
 
     /**
      * @brief Dump board as flattened array to output stream
@@ -291,21 +309,21 @@ public:
      */
     void dump(std::ostream &os) const;
 
-    void print_board() const;
+    void print_board(void) const;
 
     /**
      * @brief Count empty cells.
      *
      * @return int number of empty cells
      */
-    int empty_count() const;
+    int empty_count(void) const;
 
     /**
      * @brief Get all calculated solutions of this Sudoku game.
      *
      * @return std::vector<board_t> const&
      */
-    std::vector<board_t> const &solved_boards() const;
+    std::vector<board_t> const &solved_boards(void) const;
 
     /**
      * @brief Place a digit on the flattened board at the specified index.
@@ -360,14 +378,14 @@ public:
      *
      * @return board_t const&
      */
-    board_t const &board() const;
+    board_t const &board(void) const;
 
     /**
      * @brief Get the Mersenne-Twister based random number generator `sudoku` uses internally.
      *
      * @return std::mt19937&
      */
-    std::mt19937 &rng();
+    std::mt19937 &rng(void);
 
     static int get_row_for(size_t idx);
     static int get_col_for(size_t idx);
@@ -386,7 +404,7 @@ public:
      * @return true if safe
      * @return false otherwise
      */
-    bool is_safe(size_t row, size_t col, char digit) const;
+    bool is_safe(int row, int col, char digit) const;
     bool is_safe(size_t idx, char digit) const;
 
     friend std::ostream &operator<<(std::ostream &os, const sudoku &game);

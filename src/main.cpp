@@ -77,9 +77,9 @@ int solve(std::string const &board_data, bool manually)
         int num_steps;
         game.solve_like_a_human(num_steps);
         std::cout << "Solved game after " << num_steps << " steps:\n";
-        for (const auto [name, removed_count] : game.resolutions())
+        for (const auto &[name, removed_count] : game.resolutions())
         {
-            std::cout << " - " << name << " removed " << removed_count << " times\n";
+            std::cout << " - " << name << " removed " << removed_count << " candidates\n";
         }
         game.print_board();
     }

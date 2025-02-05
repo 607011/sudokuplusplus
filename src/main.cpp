@@ -66,17 +66,31 @@ std::string iso_datetime_now()
     return std::string(buf);
 }
 
-int solve(std::string const &board_data)
+int solve(std::string const &board_data, bool manually)
 {
     sudoku game(board_data);
     auto empty_count = game.empty_count();
     std::cout << "Trying to solve\n\n"
               << game << '\n';
-    game.solve();
-    std::cout << "number of solutions: " << game.solution_count() << " (" << game.solved_boards().size() << ")\n"
-              << "empty cells: " << empty_count << " of max. 64\n\n"
-              << game.solved_boards().front()
-              << "\n";
+    if (manually)
+    {
+        int num_steps;
+        game.solve_like_a_human(num_steps);
+        std::cout << "Solved game after " << num_steps << " steps:\n";
+        for (const auto [name, removed_count] : game.resolutions())
+        {
+            std::cout << " - " << name << " removed " << removed_count << " times\n";
+        }
+        game.print_board();
+    }
+    else
+    {
+        game.solve();
+        std::cout << "number of solutions: " << game.solution_count() << " (" << game.solved_boards().size() << ")\n"
+                  << "empty cells: " << empty_count << " of max. 64\n\n"
+                  << game.solved_boards().front()
+                  << "\n";
+    }
     return EXIT_SUCCESS;
 }
 
@@ -255,7 +269,7 @@ void prefill_generator_thread(int num_empty_cells, std::mutex &output_mutex, lon
         unsigned int num_idx = 0;
         for (auto board_idx : DIAGONAL3X3)
         {
-            game[board_idx] = game.guess_num(num_idx);
+            game[board_idx] = game.guess_digit(num_idx);
             if (++num_idx == 9)
             {
                 num_idx = 0;
@@ -323,7 +337,7 @@ void prefill_single_generator_thread(int num_empty_cells, std::mutex &output_mut
         unsigned int num_idx = 0;
         for (auto board_idx : DIAGONAL3X3)
         {
-            game[board_idx] = game.guess_num(num_idx);
+            game[board_idx] = game.guess_digit(num_idx);
             if (++num_idx == 9)
             {
                 num_idx = 0;
@@ -459,7 +473,7 @@ int generate(int num_empty_cells, unsigned int thread_count, std::string const &
 void usage()
 {
     std::cout << "** Sudoku Solver and Generator **\n"
-                 "Written by Oliver Lau. Copyright (c) 2023\n\n"
+                 "Written by Oliver Lau. Copyright (c) 2023-2025\n\n"
                  "This program will solve a Sudoku served via stdin.\n"
                  "Without any input, Sudokus will be generated.\n\n"
               << "Examples:\n"
@@ -520,7 +534,6 @@ void usage()
 
 int main(int argc, char *argv[])
 {
-    std::signal(SIGINT, signal_handler);
     std::string const DEFAULT_ALGORITHM = "prefill-single";
     std::unordered_map<std::string, generator_thread_t> const ALGORITHMS = {
         {"prefill-single", &prefill_single_generator_thread},
@@ -534,6 +547,7 @@ int main(int argc, char *argv[])
     int verbosity{0};
     generator_thread_t generator = prefill_single_generator_thread;
     std::string algorithm_name{"prefill-single"};
+    bool solve_manually = false;
 
     using argparser = argparser::argparser;
     argparser opt(argc, argv);
@@ -544,6 +558,8 @@ int main(int argc, char *argv[])
                 exit(EXIT_SUCCESS); })
         .reg({"--solve"}, argparser::required_argument, "Solve a given Sudoku", [&board_data](std::string const &val)
              { board_data = val; })
+        .reg({"-m", "--manually"}, argparser::no_argument, "Try to solve like a human would", [&solve_manually](std::string const &)
+             { solve_manually = true; })
         .reg({"--solve-file"}, "FILE", argparser::required_argument, "Solve a Sudoku contained in FILE", [&sudoku_filename](std::string const &val)
              { sudoku_filename = val; })
         .reg({"-d", "--empty-cells"}, "NUM", argparser::required_argument, "Produce Sudokus with NUM cells", [&num_empty_cells](std::string const &val)
@@ -603,9 +619,10 @@ int main(int argc, char *argv[])
             std::cerr << "\u001b[31;1mERROR:\u001b[0m Board data must contain exactly 81 digits.\n";
             return EXIT_FAILURE;
         }
-        return solve(board_data);
+        return solve(board_data, solve_manually);
     }
 
+    std::signal(SIGINT, signal_handler);
     int rc = generate(num_empty_cells, thread_count, algorithm_name, generator);
 
     return rc;

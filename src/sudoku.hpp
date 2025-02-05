@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2023 Oliver Lau, oliver@ersatzworld.net
+    Copyright (c) 2023-2025 Oliver Lau, oliver@ersatzworld.net
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -23,16 +23,16 @@
 #ifndef __SUDOKU_HPP__
 #define __SUDOKU_HPP__
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <ctime>
-#include <string>
-#include <vector>
-#include <random>
-#include <algorithm>
 #include <iostream>
 #include <optional>
+#include <random>
 #include <ranges>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "easy_set.hpp"
@@ -41,93 +41,57 @@
 class sudoku
 {
 public:
-    typedef std::array<char, 81U> board_t;
+    typedef std::array<char, 81> board_t;
 
-    enum
+    typedef enum
     {
         Row,
         Column,
         Box
-    };
+    } unit_t;
 
-    sudoku()
+    typedef struct
     {
-        init();
-        reset();
-    }
+        int row;
+        int col;
+        char digit;
+    } single_result_t;
 
-    explicit sudoku(std::string const &board_str)
-        : sudoku()
+    typedef struct
     {
-        assert(board_.size() == 81U);
-        for (unsigned int i = 0; i < 81U; ++i)
-        {
-            board_[i] = board_str.at(i) == '.'
-                            ? EMPTY
-                            : board_str.at(i);
-        }
-        calc_all_candidates();
-        // dump_candidates();
-    }
+        int row;
+        int col;
+    } coord_t;
 
-    explicit sudoku(board_t const &board)
-        : sudoku()
+    typedef struct
     {
-        board_ = board;
-    }
+        coord_t cell1;
+        coord_t cell2;
+        easy_set<char> pair;
+        unit_t unit_type;
+        int removed_count;
+    } pair_result_t;
 
-    void init()
-    {
-        rng_.seed(static_cast<uint32_t>(util::make_seed()));
-        // warmup RNG
-        for (int i = 0; i < 10'000; ++i)
-        {
-            (void)rng_();
-        }
-        for (unsigned int i = 0; i < 9U; ++i)
-        {
-            guess_num_[i] = static_cast<char>(i + '1');
-        }
-    }
+    const std::array<unit_t, 3> ALL_UNITS = {Row, Column, Box};
 
-    void reset()
-    {
-        std::fill(board_.begin(), board_.end(), EMPTY);
-        solved_boards_.clear();
-        shuffle_guesses();
-    }
-
-    inline void shuffle_guesses()
-    {
-        std::shuffle(guess_num_.begin(), guess_num_.end(), rng_);
-    }
-
-    inline char const &guess_num(unsigned int idx) const
-    {
-        return guess_num_.at(idx);
-    }
+    sudoku();
+    explicit sudoku(std::string const &board_str);
+    explicit sudoku(board_t const &board);
+    void init(void);
+    void reset_resolutions(void);
+    void reset(void);
+    void shuffle_guesses(void);
+    char const &guess_digit(size_t idx) const;
+    const std::unordered_map<std::string, int> &resolutions(void) const;
 
     /**
      * @brief Find empty cell.
      *
      * @param[out] row the row of the cell found, if any
      * @param[out] col the columns of the cell found, if any
-     * @return true if an empty cell could be found
-     * @return false otherwise
+     * @return true if an empty cell could be found, false otherwise
      */
-    bool find_free_cell(unsigned int &row, unsigned int &col)
-    {
-        for (unsigned int i = 0; i < 81; ++i)
-        {
-            if (board_.at(i) == EMPTY)
-            {
-                row = i / 9;
-                col = i % 9;
-                return true;
-            }
-        }
-        return false;
-    }
+    bool find_free_cell(int &row, int &col);
 
     /**
      * @brief Count the number of solutions.
@@ -136,37 +100,14 @@ public:
      *
      * @param[out] n the number of solutions
      */
-    void count_solutions(int &n)
-    {
-        unsigned int row, col;
-        bool some_free = find_free_cell(row, col);
-        if (!some_free)
-        {
-            ++n;
-            return;
-        }
-        for (unsigned int i = 0; i < 9; ++i)
-        {
-            if (is_safe(row, col, guess_num_[i]))
-            {
-                set(row, col, guess_num_[i]);
-                count_solutions(n);
-                set(row, col, EMPTY); // backtrack
-            }
-        }
-    }
+    void count_solutions(int &n);
 
     /**
      * @brief Get number of Sudoku's solutions.
      *
      * @return int number of solutions
      */
-    inline int solution_count()
-    {
-        int n = 0;
-        count_solutions(n);
-        return n;
-    }
+    int solution_count(void);
 
     /**
      * @brief Determine if Sudoku has more than one solution.
@@ -175,72 +116,16 @@ public:
      *
      * @param[out] n the number of solutions
      */
-    bool count_solutions_limited(int &n)
-    {
-        unsigned int row, col;
-        bool some_free = find_free_cell(row, col);
-        if (!some_free)
-        {
-            return ++n > 1;
-        }
-        for (unsigned int i = 0; i < 9; ++i)
-        {
-            if (is_safe(row, col, guess_num_[i]))
-            {
-                set(row, col, guess_num_[i]);
-                count_solutions_limited(n);
-                set(row, col, EMPTY); // backtrack
-            }
-        }
-        return n == 1;
-    }
+    bool count_solutions_limited(int &n);
 
     /**
      * @brief Check if Sudoku has exactly one solution.
      *
      * @return true if Sudoku has one clear solution, false otherwise.
      */
-    inline bool has_one_clear_solution()
-    {
-        int n = 0;
-        return count_solutions_limited(n);
-    }
+    bool has_one_clear_solution(void);
 
-    /** WIP */
-    void random_fill()
-    {
-        std::array<unsigned char, 81> unvisited;
-        for (unsigned char i = 0; i < 81; ++i)
-        {
-            unvisited[i] = i;
-        }
-        while (true)
-        {
-            std::shuffle(unvisited.begin(), unvisited.end(), rng_);
-            for (unsigned int i = 0; i < 81; ++i)
-            {
-                std::cout << '.' << std::flush;
-                auto idx = unvisited.at(i);
-                shuffle_guesses();
-                for (char num : guess_num_)
-                {
-                    if (is_safe(idx, num))
-                    {
-                        set(idx, num);
-                        if (i >= 17 && has_one_clear_solution())
-                        {
-                            std::cout << "Solving ..." << std::flush;
-                            solve();
-                            return;
-                        }
-                        set(idx, EMPTY);
-                    }
-                    std::cout << num << std::flush;
-                }
-            }
-            std::cout << "**RETRY**" << std::flush;
-        }
-    }
+    void random_fill();
 
     /**
      * @brief Solve Sudoku.
@@ -250,55 +135,26 @@ public:
      * @return true if there's at least one empty cell
      * @return false if no empty cell left, thus Sudoku is solved
      */
-    bool solve()
-    {
-        unsigned int row, col;
-        bool some_free = find_free_cell(row, col);
-        if (!some_free)
-        {
-            solved_boards_.push_back(board_);
-            return true;
-        }
-        for (unsigned int i = 0; i < 9; ++i)
-        {
-            if (is_safe(row, col, guess_num_[i]))
-            {
-                set(row, col, guess_num_[i]);
-                solve();
-                set(row, col, EMPTY); // backtrack
-            }
-        }
-        return false;
-    }
+    bool solve(void);
+    bool solve_single(void);
 
-    bool solve_single()
-    {
-        unsigned int row, col;
-        bool some_free = find_free_cell(row, col);
-        if (!some_free)
-        {
-            return true;
-        }
-        for (size_t i = 0; i < 9; ++i)
-        {
-            if (is_safe(row, col, guess_num_[i]))
-            {
-                set(row, col, guess_num_[i]);
-                if (solve_single())
-                {
-                    return true;
-                }
-                set(row, col, EMPTY); // backtrack
-            }
-        }
-        return false;
-    }
-
+    /**
+     * @brief Get a row of the board.
+     *
+     * @param row_idx
+     * @return iterator over the row's cells
+     */
     auto get_row(int row_idx) const
     {
         return board_ | std::views::drop(row_idx * 9) | std::views::take(9);
     }
 
+    /**
+     * @brief Get a column of the board.
+     *
+     * @param col_idx
+     * @return interator over the column's cells
+     */
     auto get_col(int col_idx) const
     {
         return std::views::iota(0, 9) |
@@ -306,6 +162,12 @@ public:
                                      { return board_.at(static_cast<size_t>(row * 9 + col_idx)); });
     }
 
+    /**
+     * @brief Get a box of the board.
+     *
+     * @param box_idx
+     * @return iterator over the box's cells
+     */
     auto get_box(int box_idx)
     {
         int box_row = (box_idx / 3) * 3;
@@ -319,152 +181,198 @@ public:
                 return board_.at(static_cast<size_t>(row * 9 + col)); });
     }
 
-    auto get_candidates_row(int row_idx) const
+    /**
+     * @brief Get the notes for a row
+     *
+     * @param row_idx
+     * @return iterator over notes
+     */
+    auto get_notes_for_row(int row_idx) const
     {
-        return candidates_ | std::views::drop(row_idx * 9) | std::views::take(9);
+        return notes_ | std::views::drop(row_idx * 9) | std::views::take(9);
     }
 
-    auto get_candidates_col(int col_idx) const
+    /**
+     * @brief Get the notes for a row
+     *
+     * @param row_idx
+     * @return iterator over notes
+     */
+    std::span<easy_set<char>, 9> get_notes_for_row(int row_idx)
+    {
+        return std::span<easy_set<char>, 9>{&notes_[row_idx * 9], 9};
+    }
+
+    /**
+     * @brief Get the notes for a column
+     *
+     * @param col_idx
+     * @return iterator over notes
+     */
+    auto get_notes_for_col(int col_idx) const
     {
         return std::views::iota(0, 9) |
                std::views::transform([this, col_idx](int row)
-                                     { return candidates_.at((static_cast<size_t>(row * 9 + col_idx))); });
+                                     { return notes_.at((static_cast<size_t>(row * 9 + col_idx))); });
     }
 
-    auto get_candidates_box(int box_idx) const
+    /**
+     * @brief Get the notes for a column
+     *
+     * @param col_idx
+     * @return iterator over notes
+     */
+    auto get_notes_for_col(int col_idx)
     {
-        int box_row = (box_idx / 3) * 3;
-        int box_col = (box_idx % 3) * 3;
+        return std::views::iota(0, 9) |
+               std::views::transform([this, col_idx](int row) -> easy_set<char> &
+                                     { return notes_[static_cast<size_t>(row * 9 + col_idx)]; });
+    }
 
+    /**
+     * @brief Get the notes for a box
+     *
+     * @param box_idx
+     * @return iterator over notes
+     */
+    auto get_notes_for_box(int box_idx) const
+    {
+        const int box_row = (box_idx / 3) * 3;
+        const int box_col = (box_idx % 3) * 3;
         return std::views::iota(0, 9) |
                std::views::transform([this, box_row, box_col](int index)
                                      {
                 int row = box_row + index / 3;
                 int col = box_col + index % 3;
-                return candidates_.at(static_cast<size_t>(row * 9 + col)); });
+                return notes_.at(static_cast<size_t>(row * 9 + col)); });
     }
 
-    bool solve_like_a_human()
+    /**
+     * @brief Get the notes for a box
+     *
+     * @param box_idx
+     * @return iterator over notes
+     */
+    auto get_notes_for_box(int box_idx)
     {
-        // TODO: implement lots of techniques ;-)
-        return false;
+        const int box_row = (box_idx / 3) * 3;
+        const int box_col = (box_idx % 3) * 3;
+        return std::views::iota(0, 9) | std::views::transform([this, box_row, box_col](int index) -> easy_set<char> &
+                                                              {
+                int row = box_row + index / 3;
+                int col = box_col + index % 3;
+                return notes_[row * 9 + col]; });
     }
+
+    /**
+     * @brief Check if board is solved.
+     *
+     * @return true if board is solved, false otherwise
+     */
+    bool is_solved(void);
+    void resolve_single(int row, int col, char digit);
+    std::optional<single_result_t> eliminate_obvious_single(void);
+    std::array<easy_set<char>, 9> get_notes_for_unit(unit_t unit_type, int unit_index) const;
+    std::optional<single_result_t> find_first_hidden_single_in_unit(unit_t unit_type);
+    std::optional<single_result_t> find_first_hidden_single(void);
+    int resolve_pair(pair_result_t const &result);
+    std::optional<pair_result_t> find_obvious_pair_in_unit(unit_t unit_type, int unit_index);
+    std::optional<pair_result_t> eliminate_obvious_pair(void);
+    bool next_step(void);
+    bool solve_like_a_human(int&);
+    void calc_all_candidates(void);
+    static void dump_set(easy_set<char> const &s);
+    void dump_candidates();
 
     /**
      * @brief Dump board as flattened array to output stream
      *
      * @param os std::ostream to dump to
      */
-    inline void dump(std::ostream &os) const
-    {
-        os.write(board_.data(), static_cast<std::streamsize>(board_.size()));
-    }
+    void dump(std::ostream &os) const;
+
+    void print_board() const;
 
     /**
      * @brief Count empty cells.
      *
      * @return int number of empty cells
      */
-    inline int empty_count() const
-    {
-        return static_cast<int>(std::count(board_.begin(), board_.end(), EMPTY));
-    }
+    int empty_count() const;
 
     /**
      * @brief Get all calculated solutions of this Sudoku game.
      *
      * @return std::vector<board_t> const&
      */
-    std::vector<board_t> const &solved_boards() const
-    {
-        return solved_boards_;
-    }
+    std::vector<board_t> const &solved_boards() const;
 
     /**
      * @brief Place a digit on the flattened board at the specified index.
      *
      * @param idx The index to place the digit at
-     * @param value The digit to place
+     * @param digit The digit to place
      */
-    inline void set(unsigned int idx, char value)
-    {
-        board_[idx] = value;
-    }
-
-    /**
-     * @brief Get the value at the specified index.
-     *
-     * @param idx
-     * @param value
-     */
-    inline char &operator[](unsigned int idx)
-    {
-        return board_[idx];
-    }
-
-    /**
-     * @brief Get the value at the specified index.
-     *
-     * @param idx
-     * @param value
-     */
-    inline char at(unsigned int idx) const
-    {
-        return board_.at(idx);
-    }
-
-    inline char at(unsigned int row, unsigned int col)
-    {
-        return board_.at(row * 9 + col);
-    }
-
-    /**
-     * @brief Get the flattened board.
-     *
-     * @return board_t const&
-     */
-    inline board_t const &board() const
-    {
-        return board_;
-    }
-
-    /**
-     * @brief Get the Mersenne-Twister based random number generator `sudoku` uses internally.
-     *
-     * @return std::mt19937&
-     */
-    inline std::mt19937 &rng()
-    {
-        return rng_;
-    }
+    void set(size_t idx, char digit);
 
     /**
      * @brief Set the contents of a certain cell.
      *
      * @param row the cell's row
      * @param col the cell's column
-     * @param num the cell's new value
+     * @param digit the cell's new value
      */
-    inline void set(size_t row, size_t col, char num)
-    {
-        board_[row * 9 + col] = num;
-    }
+    void set(int row, int col, char digit);
 
     /**
      * @brief Get contents of a certain cell.
      *
      * @param row the cell's row
      * @param col the cell's column
-     * @return char cell contents
+     * @return cell contents
      */
-    inline char get(size_t row, size_t col) const
-    {
-        return board_.at(row * 9 + col);
-    }
+    char get(int row, int col) const;
 
-    static inline size_t get_row_for(size_t idx) { return idx / 9; }
-    static inline size_t get_col_for(size_t idx) { return idx % 9; }
-    static inline size_t get_box_for(size_t idx) { return 3 * (get_row_for(idx) / 3) + get_col_for(idx) / 3; }
+    /**
+     * @brief Get the value at the specified index.
+     *
+     * @param idx
+     */
+    char &operator[](size_t idx);
+
+    /**
+     * @brief Get the value at the specified index.
+     *
+     * @param idx
+     */
+    char at(size_t idx) const;
+
+    /**
+     * @brief Get the digit at the specified row and column.
+     *
+     * @param row
+     * @param col
+     */
+    char at(int row, int col) const;
+
+    /**
+     * @brief Get the flattened board.
+     *
+     * @return board_t const&
+     */
+    board_t const &board() const;
+
+    /**
+     * @brief Get the Mersenne-Twister based random number generator `sudoku` uses internally.
+     *
+     * @return std::mt19937&
+     */
+    std::mt19937 &rng();
+
+    static int get_row_for(size_t idx);
+    static int get_col_for(size_t idx);
+    static int get_box_for(size_t idx);
+    static size_t index_for(int row, int col);
 
     /**
      * @brief Check if placing a number at the designated destinaton is safe.
@@ -474,47 +382,12 @@ public:
      *
      * @param row row to place into
      * @param col column to place into
-     * @param num number to place
+     * @param digit digit to place
      * @return true if safe
      * @return false otherwise
      */
-    bool is_safe(size_t row, size_t col, char num) const
-    {
-        // check row and column
-        size_t col_idx = col;
-        for (size_t row_idx = row * 9; row_idx < row * 9 + 9; ++row_idx, col_idx += 9)
-        {
-            if (board_.at(row_idx) == num)
-            {
-                return false;
-            }
-            if (board_.at(col_idx) == num)
-            {
-                return false;
-            }
-        }
-        // check 3x3 box
-        row -= row % 3;
-        col -= col % 3;
-        for (size_t i = row; i < row + 3; ++i)
-        {
-            for (size_t j = col; j < col + 3; ++j)
-            {
-                if (get(i, j) == num)
-                {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    inline bool is_safe(size_t idx, char num) const
-    {
-        size_t row = get_row_for(idx);
-        size_t col = get_col_for(idx);
-        return is_safe(row, col, num);
-    }
+    bool is_safe(size_t row, size_t col, char digit) const;
+    bool is_safe(size_t idx, char digit) const;
 
     friend std::ostream &operator<<(std::ostream &os, const sudoku &game);
 
@@ -534,7 +407,7 @@ private:
      */
     board_t board_;
 
-    std::array<easy_set<char>, 81> candidates_;
+    std::array<easy_set<char>, 81> notes_;
 
     /**
      * @brief Holds all solutions to the current game.
@@ -546,7 +419,7 @@ private:
      * @brief Helper array with shuffled digits from 1 to 9
      *
      */
-    std::array<char, 9> guess_num_;
+    std::array<char, 9> guess_digit_;
 
     /**
      * @brief Random number generator for a couple of uses.
@@ -560,65 +433,7 @@ private:
      */
     std::mt19937 rng_;
 
-private: // methods
-    void calc_all_candidates()
-    {
-        for (auto candidates : candidates_)
-        {
-            candidates.clear();
-        }
-        std::array<easy_set<char>, 9U> row_forbidden;
-        std::array<easy_set<char>, 9U> col_forbidden;
-        std::array<easy_set<char>, 9U> box_forbidden;
-        for (size_t i = 0; i < 9; ++i)
-        {
-            const auto row_data = get_row((int)i);
-            row_forbidden[i] = easy_set<char>(std::begin(row_data), std::end(row_data)) - EMPTY_SET;
-            const auto col_data = get_col((int)i);
-            col_forbidden[i] = easy_set<char>(std::begin(col_data), std::end(col_data)) - EMPTY_SET;
-            const auto box_data = get_box((int)i);
-            box_forbidden[i] = easy_set<char>(std::begin(box_data), std::end(box_data)) - EMPTY_SET;
-        }
-        for (size_t i = 0; i < candidates_.size(); ++i)
-        {
-            size_t row = get_row_for(i);
-            size_t col = get_col_for(i);
-            size_t box = get_box_for(i);
-            if (get(row, col) == EMPTY)
-            {
-                candidates_[i] =
-                    ALL_DIGITS -
-                    row_forbidden.at(row) -
-                    col_forbidden.at(col) -
-                    box_forbidden.at(box);
-            }
-        }
-    }
-
-    static void dump_set(easy_set<char> const &s)
-    {
-        for (char e : s)
-        {
-            std::cout << ' ' << e;
-        }
-        std::cout << std::endl;
-    }
-
-    void dump_candidates()
-    {
-        for (int row = 0; row < 9; ++row)
-        {
-            for (int col = 0; col < 9; ++col)
-            {
-                std::cout << "(" << row << "," << col << ") ";
-                for (char candidate : candidates_.at(static_cast<size_t>(row * 9 + col)))
-                {
-                    std::cout << ' ' << candidate;
-                }
-                std::cout << std::endl;
-            }
-        }
-    }
+    std::unordered_map<std::string, int> resolutions_;
 };
 
 std::ostream &operator<<(std::ostream &, const sudoku::board_t &);

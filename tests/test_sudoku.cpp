@@ -14,6 +14,18 @@ TEST(SudokuTest, BasicAssertions)
     }
 }
 
+TEST(SudokuTest, IndexAssertions)
+{
+    size_t idx = 0;
+    for (int row = 0; row < 9; ++row)
+    {
+        for (int col = 0; col < 9; ++col)
+        {
+            EXPECT_EQ(idx++, sudoku::index_for(row, col));
+        }
+    }
+}
+
 TEST(SudokuTest, GetRowAssertions)
 {
     sudoku game("000280500500000090470300010032010000910008200060000007600000000003000001000906000");

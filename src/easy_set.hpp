@@ -9,6 +9,51 @@ public:
     // Inherit constructors from std::unordered_set
     using std::unordered_set<T, Hash, KeyEqual, Allocator>::unordered_set;
 
+    // Subset check methods
+    bool is_subset_of(easy_set const &other) const
+    {
+        // Check if every element in this set is in the other set
+        return std::all_of(this->begin(), this->end(),
+                           [&other](const T &item)
+                           {
+                               return other.count(item) > 0;
+                           });
+    }
+
+    // Strict subset check (subset and not equal)
+    bool is_proper_subset_of(easy_set const &other) const
+    {
+        // Must be a subset and not equal
+        return this->size() < other.size() && this->is_subset_of(other);
+    }
+
+    // Convenience method for set containment in multiple directions
+    bool contains_set(easy_set const &subset) const
+    {
+        return subset.is_subset_of(*this);
+    }
+
+    // Overloaded comparison operators for subset relationships
+    bool operator<=(easy_set const &other) const
+    {
+        return this->is_subset_of(other);
+    }
+
+    bool operator<(easy_set const &other) const
+    {
+        return this->is_proper_subset_of(other);
+    }
+
+    // Additional utility methods to complement subset checking
+    bool is_disjoint(easy_set const &other) const
+    {
+        return std::none_of(this->begin(), this->end(),
+                            [&other](const T &item)
+                            {
+                                return other.count(item) > 0;
+                            });
+    }
+
     // Set subtraction operator
     easy_set operator-(const easy_set &other) const
     {

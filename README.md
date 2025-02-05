@@ -16,6 +16,8 @@ The generator works with a variety of algorithms to produce Sudokus:
 
 #### Prerequisites
 
+- C++ compiler with support for C++20, especially `std::ranges`.
+
 In terminal:
 
 ```

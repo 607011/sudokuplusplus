@@ -131,9 +131,3 @@ You can convert a Sudoku file to SVG with `sudoku2svg`, e.g.:
 ```
 ./sudoku2svg sudoku-20230318T160133-61.txt sudoku.svg
 ```
-
-
-## Work In Progress
-
-I'm working on a human-like solver that tries to solve a Sudoku game by applying a variety of techniques like "obvious/hidden singles/pairs", "pointing pairs", "X-wing" an so on. That'll be a lot of work …
-

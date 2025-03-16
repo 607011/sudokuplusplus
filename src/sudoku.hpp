@@ -300,7 +300,7 @@ public:
     bool solve_like_a_human(int &);
     void calc_all_candidates(void);
     static void dump_set(easy_set<char> const &s);
-    void dump_candidates(void);
+    void dump_notes(void);
 
     /**
      * @brief Dump board as flattened array to output stream

@@ -45,6 +45,7 @@
 typedef std::function<void(int, std::mutex &, long long &, long long &)> generator_thread_t;
 
 std::atomic<bool> do_quit{false};
+WINDOW *win = nullptr;
 
 #define ATTENTION_PAIR (1)
 #define STATUS_ROW (20)
@@ -136,7 +137,8 @@ void board_found(sudoku::board_t const &board, std::chrono::time_point<std::chro
         out.write(board.data(), static_cast<std::streamsize>(board.size()));
         out << std::endl;
         attron(A_BOLD);
-        mvprintw(STATUS_ROW, 2, "Game saved to '%s' ...", filename.c_str());
+        std::string serialized_board(std::begin(board), std::end(board));
+        mvprintw(STATUS_ROW, 2, "%s saved to '%s' ...", serialized_board.c_str(), filename.c_str());
     }
     attroff(A_BOLD);
     auto t1 = std::chrono::high_resolution_clock().now();
@@ -257,11 +259,8 @@ void prefill_generator_thread(int num_empty_cells, std::mutex &output_mutex, lon
     output_mutex.lock();
     sudoku game;
     output_mutex.unlock();
-    std::array<unsigned int, 81U> unvisited;
-    for (unsigned int i = 0; i < 81U; ++i)
-    {
-        unvisited[i] = i;
-    }
+    std::array<unsigned int, 81> unvisited;
+    std::iota(unvisited.begin(), unvisited.end(), 0);
     auto t0 = std::chrono::high_resolution_clock().now();
     while (!do_quit)
     {
@@ -325,11 +324,8 @@ void prefill_single_generator_thread(int num_empty_cells, std::mutex &output_mut
     output_mutex.lock();
     sudoku game;
     output_mutex.unlock();
-    std::array<unsigned int, 81U> unvisited;
-    for (unsigned int i = 0; i < 81U; ++i)
-    {
-        unvisited[i] = i;
-    }
+    std::array<unsigned int, 81> unvisited;
+    std::iota(unvisited.begin(), unvisited.end(), 0);
     auto t0 = std::chrono::high_resolution_clock().now();
     while (!do_quit)
     {
@@ -352,6 +348,59 @@ void prefill_single_generator_thread(int num_empty_cells, std::mutex &output_mut
         int empty_cells = num_empty_cells;
         auto visited_idx = unvisited.size();
         std::shuffle(unvisited.begin(), unvisited.end(), game.rng());
+        while (empty_cells > 0 && visited_idx-- > 0)
+        {
+            auto const pos = unvisited.at(visited_idx);
+            char const cell_copy = game.at(pos);
+            game[pos] = sudoku::EMPTY;
+            if (game.has_one_clear_solution())
+            {
+                --empty_cells;
+            }
+            else
+            {
+                game[pos] = cell_copy;
+            }
+        }
+        const bool complete = empty_cells == 0;
+        board_found(game.board(), t0, num_empty_cells, complete, output_mutex, n_games_valid, n_games_produced);
+        game.reset();
+    }
+    about_to_exit();
+}
+
+void symmetric_generator_thread(int num_empty_cells, std::mutex &output_mutex, long long &n_games_valid, long long &n_games_produced)
+{
+    static const std::array<uint8_t, 27> DIAGONAL3X3{
+        0, 1, 2, 9, 10, 11, 18, 19, 20,
+        30, 31, 32, 39, 40, 41, 48, 49, 50,
+        60, 61, 62, 69, 70, 71, 78, 79, 80};
+    output_mutex.lock();
+    sudoku game;
+    output_mutex.unlock();
+    std::array<unsigned int, 81> unvisited;
+    std::iota(unvisited.begin(), unvisited.end(), 0);
+    auto t0 = std::chrono::high_resolution_clock().now();
+    while (!do_quit)
+    {
+        // populate board
+        unsigned int num_idx = 0;
+        for (auto board_idx : DIAGONAL3X3)
+        {
+            game[board_idx] = game.guess_digit(num_idx);
+            if (++num_idx == 9)
+            {
+                num_idx = 0;
+                game.shuffle_guesses();
+            }
+        }
+
+        game.solve_single();
+
+        // visit cells in random order until all are visited
+        // or the desired amount of empty cells is reached
+        int empty_cells = num_empty_cells;
+        auto visited_idx = unvisited.size();
         while (empty_cells > 0 && visited_idx-- > 0)
         {
             auto const pos = unvisited.at(visited_idx);
@@ -408,6 +457,10 @@ void draw_sudoku_grid()
     mvaddch(14, 18, ACS_PLUS);
 }
 
+void place_scrollable_output()
+{
+}
+
 std::function<void()> redraw;
 
 void resize_handler(int sig)
@@ -428,6 +481,15 @@ int generate(int num_empty_cells, unsigned int thread_count, std::string const &
     curs_set(0);
     start_color();
     init_pair(ATTENTION_PAIR, COLOR_WHITE, COLOR_RED);
+
+    int win_height;
+    int win_width;
+    getmaxyx(stdscr, win_height, win_width);
+
+    win = newwin(win_height - 4, win_width - 4, 2, 2);
+
+    scrollok(win, TRUE);
+    box(win, 0, 0);
 
     redraw = [num_empty_cells, thread_count, algorithm_name]() -> void
     {

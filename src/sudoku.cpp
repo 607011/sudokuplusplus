@@ -21,6 +21,7 @@
 */
 
 #include <iostream>
+#include <sstream>
 
 #include "sudoku.hpp"
 
@@ -72,7 +73,7 @@ void sudoku::reset_resolutions(void)
         {"obvious single", 0},
         {"hidden single", 0},
         {"obvious pair", 0},
-        {"hidden pair", 0},   // not implemented yet
+        {"hidden pair", 0},
         {"pointing pair", 0}, // not implemented yet
         {"skyscraper", 0},    // not implemented yet
         {"triple", 0}         // not implemented yet
@@ -422,7 +423,7 @@ std::optional<sudoku::pair_result_t> sudoku::find_obvious_pair_in_unit(unit_t un
         {
             easy_set<char> cell1_candidates = unit.at((size_t)i);
             easy_set<char> cell2_candidates = unit.at((size_t)j);
-            if (cell1_candidates.size() == 0 && cell2_candidates.size() == 0)
+            if (cell1_candidates.empty() && cell2_candidates.empty())
                 continue;
             auto pair = cell1_candidates & cell2_candidates;
             if (pair.size() != 2 || cell1_candidates.size() != 2 || cell2_candidates.size() != 2)
@@ -505,14 +506,8 @@ std::optional<sudoku::pair_result_t> sudoku::find_hidden_pair_in_unit(unit_t uni
     }
     // select only those that occur twice
     std::vector<int> potential_pairs;
-    potential_pairs.reserve(9);
-    for (int i = 0; i < (int)candidate_count.size(); ++i)
-    {
-        if (candidate_count.at((size_t)i) == 2)
-        {
-            potential_pairs.push_back(i);
-        }
-    }
+    std::copy_if(std::begin(candidate_count), std::end(candidate_count), std::back_inserter(potential_pairs), [](int a)
+                 { return a == 2; });
     if (potential_pairs.size() < 2)
         return std::nullopt;
 
@@ -610,8 +605,8 @@ bool sudoku::next_step(void)
     if (result)
     {
         std::cout << "obvious single " << result->digit << " found at " << result->row << ',' << result->col << "\n";
-        print_board();
         resolve_single(result->row, result->col, result->digit);
+        print_board();
         calc_all_candidates();
         progress_made = true;
         ++resolutions_["obvious single"];
@@ -622,8 +617,8 @@ bool sudoku::next_step(void)
         if (result)
         {
             std::cout << "hidden single " << result->digit << " found at " << result->row << ',' << result->col << "\n";
-            print_board();
             resolve_single(result->row, result->col, result->digit);
+            print_board();
             calc_all_candidates();
             progress_made = true;
             ++resolutions_["hidden single"];
@@ -631,13 +626,13 @@ bool sudoku::next_step(void)
     }
     if (!progress_made)
     {
+        dump_notes();
         auto result = eliminate_obvious_pair();
         if (result)
         {
             std::cout << "obvious pair (" << *(result->pair.begin()) << ' ' << *(std::next(result->pair.begin())) << ") found at ("
                       << result->cell1.row << ',' << result->cell1.col << ' '
                       << result->cell2.row << ',' << result->cell2.col << ")\n";
-
             print_board();
             progress_made = true;
             resolutions_["obvious pair"] += result->removed_count;
@@ -645,6 +640,7 @@ bool sudoku::next_step(void)
     }
     if (!progress_made)
     {
+        dump_notes();
         auto result = eliminate_hidden_pair();
         if (result)
         {
@@ -713,9 +709,6 @@ void sudoku::calc_all_candidates(void)
         {
             notes_[i].clear();
         }
-
-        // std::cout << "notes (" << row << ',' << col << "): ";
-        // dump_set(notes_.at(i));
     }
 }
 
@@ -728,20 +721,50 @@ void sudoku::dump_set(easy_set<char> const &s)
     std::cout << std::endl;
 }
 
-void sudoku::dump_candidates(void)
+void sudoku::dump_notes(void)
 {
+    std::ostringstream output;
+    const std::string horizontal_line{"+-------------+-------------+-------------+"};
+
     for (int row = 0; row < 9; ++row)
     {
-        for (int col = 0; col < 9; ++col)
+        if (row % 3 == 0)
         {
-            std::cout << "(" << row << "," << col << ") ";
-            for (char candidate : notes_.at(static_cast<size_t>(row * 9 + col)))
+            output << horizontal_line << '\n';
+        }
+        // Each cell takes 3 lines
+        for (int cell_line = 0; cell_line < 3; ++cell_line)
+        {
+            bool line_num_output = false;
+            // Process each block of 3 cells
+            for (int block = 0; block < 3; ++block)
             {
-                std::cout << ' ' << candidate;
+                output << "| ";
+                // Process 3 cells in this block
+                for (int col = block * 3; col < (block + 1) * 3; ++col)
+                {
+                    easy_set<char> const&cell = notes_.at(static_cast<size_t>(row * 9 + col));
+                    // Print 3 candidates per line, properly spaced
+                    for (int i = 0; i < 3; ++i)
+                    {
+                        char candidate = static_cast<char>('1' + cell_line * 3 + i);
+                        if (cell.has(candidate))
+                        {
+                            output << candidate;
+                        }
+                        else
+                        {
+                            output << '.';
+                        }
+                    }
+                    output << ' ';
+                }
             }
-            std::cout << std::endl;
+            output << "|\n";
         }
     }
+    output << horizontal_line << '\n';
+    std::cout << output.str() << std::endl;
 }
 
 /**
@@ -756,6 +779,9 @@ void sudoku::dump(std::ostream &os) const
 
 void sudoku::print_board(void) const
 {
+    for (size_t i = 0; i < board_.size(); ++i)
+        std::cout << board_.at(i);
+    std::cout << '\n';
     for (int row = 0; row < 9; ++row)
     {
         for (char digit : get_row(row))
